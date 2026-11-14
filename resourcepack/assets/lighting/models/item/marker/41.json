@@ -1,0 +1,113 @@
+{
+  "textures": {
+    "m": "lighting:item/marker",
+    "particle": "lighting:item/marker"
+  },
+  "elements": [
+    {
+      "from": [
+        7.99,
+        7.99,
+        7.99
+      ],
+      "to": [
+        8.01,
+        8.01,
+        8.01
+      ],
+      "shade": false,
+      "faces": {
+        "north": {
+          "uv": [
+            9.25,
+            2.25,
+            9.75,
+            2.75
+          ],
+          "texture": "#m",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            9.25,
+            2.25,
+            9.75,
+            2.75
+          ],
+          "texture": "#m",
+          "tintindex": 0
+        }
+      }
+    },
+    {
+      "from": [
+        7.99,
+        7.99,
+        7.99
+      ],
+      "to": [
+        8.01,
+        8.01,
+        8.01
+      ],
+      "shade": false,
+      "faces": {
+        "north": {
+          "uv": [
+            9.25,
+            6.25,
+            9.75,
+            6.75
+          ],
+          "texture": "#m",
+          "tintindex": 1
+        },
+        "south": {
+          "uv": [
+            9.25,
+            6.25,
+            9.75,
+            6.75
+          ],
+          "texture": "#m",
+          "tintindex": 1
+        }
+      }
+    },
+    {
+      "from": [
+        7.99,
+        7.99,
+        7.99
+      ],
+      "to": [
+        8.01,
+        8.01,
+        8.01
+      ],
+      "shade": false,
+      "faces": {
+        "north": {
+          "uv": [
+            9.25,
+            10.25,
+            9.75,
+            10.75
+          ],
+          "texture": "#m",
+          "tintindex": 0
+        },
+        "south": {
+          "uv": [
+            9.25,
+            10.25,
+            9.75,
+            10.75
+          ],
+          "texture": "#m",
+          "tintindex": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+# Lighting - coloured lights placed with the Lighting Wand.
+# Colour shading needs Minecraft 26.3 (per-player post effects) and the Lighting resource pack.
+# Without them every light is still a vanilla light block plus wand particles.
+
+lights:
+  radius:
+    min: 1.0
+    # at most 31.5 (the shader carries radius * 8 in one byte)
+    max: 24.0
+    # one sneak+scroll notch
+    step: 0.5
+    default: 6.0
+  intensity:
+    default: 1.0
+  color:
+    default: "#FFB347"
+    # left-click with the wand cycles these
+    presets:
+      warm: "#FFB347"
+      candle: "#FF8A2B"
+      daylight: "#FFF4E0"
+      cold: "#9CC8FF"
+      emergency: "#FF2A2A"
+      biohazard: "#7CFF4F"
+      containment: "#4FD8FF"
+      ultraviolet: "#9B5CFF"
+      sodium: "#FFB000"
+  # also place a vanilla LIGHT block at each light's centre (only in air/water; removed with the light)
+  vanilla-light-block: true
+  # the shader reads 64 lights per frame; this is per world (1..64)
+  max-per-world: 64
+  # item_display view range of the markers (x 64 blocks, scaled by the client's entity distance)
+  marker-view-range: 2.0
+
+wand:
+  # how far a new light goes: the air block in front of the aimed face, or this far in mid-air
+  place-distance: 6.0
+  # aiming at a light: how far, and how close to the crosshair ray (blocks)
+  select-distance: 12.0
+  select-tolerance: 0.6
+
+vfx:
+  preview:
+    interval-ticks: 2
+    # sphere ring density, and the cap per ring (big radii)
+    points-per-block: 3.0
+    max-points-per-ring: 96
+    # dots on existing lights near the wand holder
+    show-lights-within: 32.0
+  trail:
+    enabled: true
+    visible-to: 32
+    swing-arc: true
+
+shader:
+  # send the colour post effect (lighting:colored_lights) to players
+  enabled: true
+  # only once their client confirmed the Lighting pack loaded (delivery none: assumed loaded)
+  require-pack: true
+
+pack:
+  # http: built-in web server on pack.http.port | url: you host plugins/Lighting/lighting-pack.zip, set pack.url |
+  # none: the pack is merged into the server's own pack
+  delivery: http
+  http:
+    port: 8165
+    bind: "0.0.0.0"
+    # host name clients use to download; empty = the address each player connected with
+    public-host: ""
+  url: ""
+  required: false
+  prompt: "<gray>Lighting: coloured light shading and the Lighting Wand"
+  # build the pack from this folder inside plugins/Lighting/ instead of the copy in the jar ("" = jar)
+  source-folder: ""

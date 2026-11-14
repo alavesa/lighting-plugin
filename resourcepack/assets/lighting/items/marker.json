@@ -1,0 +1,1241 @@
+{
+  "model": {
+    "type": "minecraft:range_dispatch",
+    "property": "minecraft:custom_model_data",
+    "index": 0,
+    "entries": [
+      {
+        "threshold": 0,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/0",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 1,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/1",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 2,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/2",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 3,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/3",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 4,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/4",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 5,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/5",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 6,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/6",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 7,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/7",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 8,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/8",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 9,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/9",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 10,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/10",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 11,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/11",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 12,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/12",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 13,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/13",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 14,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/14",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 15,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/15",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 16,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/16",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 17,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/17",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 18,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/18",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 19,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/19",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 20,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/20",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 21,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/21",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 22,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/22",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 23,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/23",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 24,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/24",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 25,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/25",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 26,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/26",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 27,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/27",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 28,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/28",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 29,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/29",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 30,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/30",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 31,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/31",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 32,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/32",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 33,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/33",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 34,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/34",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 35,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/35",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 36,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/36",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 37,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/37",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 38,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/38",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 39,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/39",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 40,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/40",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 41,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/41",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 42,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/42",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 43,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/43",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 44,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/44",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 45,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/45",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 46,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/46",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 47,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/47",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 48,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/48",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 49,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/49",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 50,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/50",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 51,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/51",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 52,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/52",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 53,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/53",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 54,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/54",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 55,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/55",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 56,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/56",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 57,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/57",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 58,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/58",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 59,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/59",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 60,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/60",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 61,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/61",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 62,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/62",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      },
+      {
+        "threshold": 63,
+        "model": {
+          "type": "minecraft:model",
+          "model": "lighting:item/marker/63",
+          "tints": [
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 0,
+              "default": 16777215
+            },
+            {
+              "type": "minecraft:custom_model_data",
+              "index": 1,
+              "default": 0
+            }
+          ]
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "lighting:item/marker/0",
+      "tints": [
+        {
+          "type": "minecraft:custom_model_data",
+          "index": 0,
+          "default": 16777215
+        },
+        {
+          "type": "minecraft:custom_model_data",
+          "index": 1,
+          "default": 0
+        }
+      ]
+    }
+  }
+}
