@@ -59,9 +59,10 @@ shader:
   require-pack: true
 
 pack:
-  # http: built-in web server on pack.http.port | url: you host plugins/Lighting/lighting-pack.zip, set pack.url |
-  # none: the pack is merged into the server's own pack
-  delivery: http
+  # auto: same-port, else http | same-port: served on the Minecraft port (no extra port to open; not behind
+  # Velocity/Bungee) | http: built-in web server on pack.http.port (players must reach that port) |
+  # url: you host plugins/Lighting/lighting-pack.zip, set pack.url | none: the pack is merged into the server's own pack
+  delivery: auto
   http:
     port: 8165
     bind: "0.0.0.0"

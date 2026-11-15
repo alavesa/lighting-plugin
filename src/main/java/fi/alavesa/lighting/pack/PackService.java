@@ -32,7 +32,9 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>pack.delivery:
  * <ul>
- *   <li>http: served by the built-in HTTP server on pack.http.port</li>
+ *   <li>auto (default): same-port, or http when the Minecraft port cannot be hooked</li>
+ *   <li>same-port: served on the Minecraft port itself (nothing to open in a firewall; not behind Velocity/Bungee)</li>
+ *   <li>http: served by the built-in HTTP server on pack.http.port (that port must be reachable by players)</li>
  *   <li>url: you upload plugins/Lighting/lighting-pack.zip yourself; pack.url points at it</li>
  *   <li>none: the pack is merged into another pack; nothing is sent here</li>
  * </ul>
@@ -49,6 +51,9 @@ public final class PackService implements Listener {
     private LightingConfig cfg;
     private PackBuilder.@Nullable Built built;
     private @Nullable PackHttpServer http;
+    private @Nullable SamePortHttp samePort;
+    /** What auto resolved to: same-port or http. */
+    private String effective = "http";
 
     private final java.util.function.Consumer<Player> onLoaded;
 
@@ -69,11 +74,18 @@ public final class PackService implements Listener {
     public void stop() {
         if (http != null) http.stop();
         http = null;
+        if (samePort != null) samePort.uninstall();
+        samePort = null;
+    }
+
+    /** The delivery in use: same-port, http, url or none. */
+    public String delivery() {
+        return cfg.packDelivery.equals("auto") ? effective : cfg.packDelivery;
     }
 
     public void reload(LightingConfig cfg) {
         boolean portChanged = this.cfg.packHttpPort != cfg.packHttpPort || !this.cfg.packHttpBind.equals(cfg.packHttpBind)
-                || !cfg.packDelivery.equals("http");
+                || !cfg.packDelivery.equals(this.cfg.packDelivery);
         this.cfg = cfg;
         if (portChanged) stop();
         String before = built == null ? "" : built.sha1();
@@ -97,7 +109,21 @@ public final class PackService implements Listener {
             built = null;
             return;
         }
-        if (cfg.packDelivery.equals("http")) {
+        if (cfg.packDelivery.equals("same-port") || cfg.packDelivery.equals("auto")) {
+            if (samePort == null) {
+                SamePortHttp h = new SamePortHttp(Bukkit.getServer(), "lighting", path -> dataFolder.resolve("lighting-pack.zip").toFile());
+                String problem = h.install();
+                if (problem == null) {
+                    samePort = h;
+                    log.info("Lighting pack served on the Minecraft port (" + Bukkit.getPort() + "): nothing to open in a firewall");
+                } else {
+                    log.warning("could not serve the pack on the Minecraft port (" + problem + ")"
+                            + (cfg.packDelivery.equals("auto") ? "; using the HTTP server on port " + cfg.packHttpPort : ""));
+                }
+            }
+            effective = samePort != null ? "same-port" : "http";
+        }
+        if (delivery().equals("http")) {
             try {
                 if (http == null) http = new PackHttpServer(cfg.packHttpBind, cfg.packHttpPort);
                 http.serve(built.zip(), built.sha1());
@@ -118,6 +144,7 @@ public final class PackService implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
+        fi.alavesa.lighting.effect.LightEffect.forget(e.getPlayer());
         status.remove(e.getPlayer().getUniqueId());
     }
 
@@ -159,7 +186,13 @@ public final class PackService implements Listener {
         }
         if (host.isBlank()) host = Bukkit.getIp().isBlank() ? "localhost" : Bukkit.getIp();
         if (host.contains(":") && !host.startsWith("[")) host = "[" + host + "]"; // IPv6 literal
-        return URI.create("http://" + host + ":" + cfg.packHttpPort + "/lighting/" + built.sha1() + ".zip");
+        int port = cfg.packHttpPort;
+        if (delivery().equals("same-port")) {
+            port = Bukkit.getPort();
+            InetSocketAddress vh = p.getConnection().getVirtualHost();
+            if (cfg.packPublicHost.isBlank() && vh != null && vh.getPort() > 0) port = vh.getPort();
+        }
+        return URI.create("http://" + host + ":" + port + "/lighting/" + built.sha1() + ".zip");
     }
 
     // ------------------------------------------------------------------ status

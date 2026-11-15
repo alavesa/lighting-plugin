@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "fi.alavesa"
-version = "0.1.0"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -14,6 +14,8 @@ repositories {
 dependencies {
     // Pinned to an exact stable build for reproducible builds. Bump the build number to move forward.
     compileOnly("io.papermc.paper:paper-api:26.2.build.135-stable")
+    // The server's own netty, compile-only: the same-port pack delivery hooks the Minecraft listening channel.
+    compileOnly(fileTree("libs") { include("netty-*.jar") })
 }
 
 tasks.withType<JavaCompile>().configureEach {

@@ -150,7 +150,7 @@ public final class LightingCommand implements TabExecutor {
                     return true;
                 }
                 s.sendMessage(LightDialogs.mm("<gray>pack sha1 <white>" + pack.sha1() + "</white>, post effects "
-                        + (LightEffect.available() ? "<green>available" : "<yellow>not available (26.2)")));
+                        + (LightEffect.available() ? "<green>available (" + LightEffect.backend() + ")" : "<yellow>not available (26.2)")));
                 for (Player p : Bukkit.getOnlinePlayers()) {
                     s.sendMessage(LightDialogs.mm("<gray>  " + p.getName() + ": <white>" + pack.status(p)
                             + "</white> shading " + (LightEffect.has(p) ? "<green>on" : "<red>off")));

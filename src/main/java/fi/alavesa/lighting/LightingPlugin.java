@@ -39,6 +39,7 @@ public final class LightingPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        migratePackDelivery();
         cfg = new LightingConfig(getConfig());
 
         registry = new LightRegistry(this, cfg);
@@ -128,5 +129,21 @@ public final class LightingPlugin extends JavaPlugin implements Listener {
 
     PackService pack() {
         return pack;
+    }
+
+    /**
+     * 0.2: configs written by 0.1 say pack.delivery: http on port 8165, which players behind a firewall never reach
+     * (no coloured light). An untouched default is switched to auto (served on the Minecraft port) once.
+     */
+    private void migratePackDelivery() {
+        var c = getConfig();
+        if ("http".equalsIgnoreCase(c.getString("pack.delivery")) && c.getInt("pack.http.port", 8165) == 8165
+                && !c.getBoolean("pack.delivery-migrated", false)) {
+            c.set("pack.delivery", "auto");
+            c.set("pack.delivery-migrated", true);
+            saveConfig();
+            getLogger().info("pack.delivery: http -> auto: the Lighting pack is now served on the Minecraft port. "
+                    + "Set pack.delivery: http to go back to port 8165.");
+        }
     }
 }

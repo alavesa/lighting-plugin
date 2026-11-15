@@ -84,7 +84,7 @@ public final class LightingConfig {
         effectEnabled = c.getBoolean("shader.enabled", true);
         requirePackForEffect = c.getBoolean("shader.require-pack", true);
 
-        packDelivery = c.getString("pack.delivery", "http").toLowerCase(Locale.ROOT);
+        packDelivery = c.getString("pack.delivery", "auto").toLowerCase(Locale.ROOT);
         packHttpPort = c.getInt("pack.http.port", 8165);
         packHttpBind = c.getString("pack.http.bind", "0.0.0.0");
         packPublicHost = c.getString("pack.http.public-host", "");

@@ -86,7 +86,14 @@ Permissions: `lighting.wand`, `lighting.command.<sub>`, `lighting.admin` (all). 
 
 ## Pack
 
-Built from `resourcepack/` at startup and served on port 8165 (`pack.delivery: http`), or `url` / `none` (merged).
+Built from `resourcepack/` at startup and, since 0.2.0, served on the Minecraft port itself (`pack.delivery: auto` /
+`same-port`: nothing to open in a firewall; not behind Velocity/Bungee). `http` serves it on port 8165 instead (players
+must reach that port - with it closed nobody gets the pack and there is no coloured light), or `url` / `none` (merged).
+0.1.0 configs with the untouched default `http` on 8165 are switched to `auto` once. Several plugins can share the
+Minecraft port this way (SuperbVehicles 0.7+, CCTV 0.7+): each answers only its own download path.
+The colour pass is applied with Paper's `Player.postEffects()` (the API behind `/posteffect`); if a Paper build ever
+renames that API, the console runs `/posteffect add|remove <player> lighting:colored_lights` instead
+(`/lighting info` shows the backend).
 The base pack (formats 88..97) has the wand and marker models; all shaders live in the 26.3 overlay `lighting_26_3`.
 The pack overrides `minecraft:shaders/core/item.vsh/fsh`; changes are between `LIGHTING BEGIN/END` markers, so it
 can be merged with another pack's item shader by hand.

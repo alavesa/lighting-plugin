@@ -12,6 +12,9 @@ import org.jspecify.annotations.Nullable;
  * which exists from Minecraft 26.3. Bound by reflection so the jar also loads on 26.2, where lights are vanilla
  * light + particles only.
  *
+ * <p>When that API cannot be bound (a Paper build that renamed it) but the vanilla {@code /posteffect} command exists,
+ * the console runs {@code posteffect add|remove <player> lighting:colored_lights} instead.
+ *
  * <p>Other plugins (CCTV, Firearms) keep their own effects in the same list; ours is kept FIRST so their screen
  * looks grade the already-lit frame, and only our id is ever added or removed.
  */
@@ -41,15 +44,45 @@ public final class LightEffect {
     private LightEffect() {
     }
 
+    private static final java.util.Set<java.util.UUID> BY_COMMAND = new java.util.HashSet<>();
+
     public static boolean available() {
-        return POST_EFFECTS != null;
+        return POST_EFFECTS != null || commandAvailable();
+    }
+
+    /** "paper" (Player.postEffects), "command" (/posteffect) or "none" (Minecraft 26.2). */
+    public static String backend() {
+        return POST_EFFECTS != null ? "paper" : commandAvailable() ? "command" : "none";
+    }
+
+    private static boolean commandAvailable() {
+        try {
+            return org.bukkit.Bukkit.getCommandMap().getCommand("minecraft:posteffect") != null
+                    || org.bukkit.Bukkit.getCommandMap().getCommand("posteffect") != null;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private static void command(String op, Player p) {
+        org.bukkit.Bukkit.dispatchCommand(org.bukkit.Bukkit.getConsoleSender(), "minecraft:posteffect " + op + " " + p.getName() + " " + ID.asString());
+    }
+
+    /** The player left: the command path re-adds the effect on the next join. */
+    public static void forget(Player p) {
+        BY_COMMAND.remove(p.getUniqueId());
     }
 
     public static boolean has(Player p) {
+        if (POST_EFFECTS == null) return BY_COMMAND.contains(p.getUniqueId());
         return values(p).contains(ID);
     }
 
     public static void enable(Player p) {
+        if (POST_EFFECTS == null) {
+            if (commandAvailable() && BY_COMMAND.add(p.getUniqueId())) command("add", p);
+            return;
+        }
         List<Key> current = values(p);
         if (!current.isEmpty() && current.getFirst().equals(ID)) return;
         List<Key> next = new ArrayList<>(current);
@@ -59,6 +92,10 @@ public final class LightEffect {
     }
 
     public static void disable(Player p) {
+        if (POST_EFFECTS == null) {
+            if (BY_COMMAND.remove(p.getUniqueId()) && p.isOnline()) command("remove", p);
+            return;
+        }
         List<Key> current = values(p);
         if (!current.contains(ID)) return;
         List<Key> next = new ArrayList<>(current);
