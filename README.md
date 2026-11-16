@@ -1,11 +1,12 @@
 # Lighting
 
-Coloured lights, flashlights and the **Lighting Wand** for vanilla Minecraft clients, **without shaders**.
+Coloured lights with shadows, flashlights and the **Lighting Wand** for vanilla Minecraft clients, **without shaders
+or post effects**.
 Paper 26.2+ plugin (one jar), resource pack formats 88–97 (26.2 and 26.3).
 
 ![Wand lights on a 26.3 client](docs/wand-lights.png)
 
-## Why 0.1/0.2 failed, and what 0.3 does instead
+## Why 0.1/0.2 failed, and what 0.3+ does instead
 
 0.1 and 0.2 drew colour with a **core shader** (`core/item.vsh`) plus a **per-player post effect**. That chain
 breaks in several independent ways on a real server:
@@ -19,7 +20,13 @@ breaks in several independent ways on a real server:
    shader fails to compile (seen before in Firearms 0.27).
 4. **Post effects are shared state.** CCTV and Firearms also set per-player post effects.
 
-0.3 removes all of that: **no `.vsh`/`.fsh`, no post effects.** Light is drawn with what the vanilla renderer
+0.3 removes all of that: **no `.vsh`/`.fsh`, no post effects.** Problems found and fixed on a real 26.3 client
+while building 0.3/0.4: decal textures outside `textures/item/` render as missing-texture squares; translucent
+items drop pixels under 10% alpha (hard edges, fixed with a dithered fringe); decals bigger than a small block's face
+hang in the air as sheets (clamped to the surface's extent, for pools and flashlight spots); block lights hitting
+their own block (projection starts at the edge of their cell); `/fill` and WorldEdit fire no events (periodic
+rescan); and the separate teleport + metadata packets of moving server entities (0.4: packet entities, position
+in the matrix, one bundle per pass). Light is drawn with what the vanilla renderer
 already does well:
 
 ```
@@ -40,17 +47,30 @@ already does well:
 * **Brightness** = vanilla LIGHT blocks: real blocks for wand lights (config `lights.light-block: real`), or
   client-side fake blocks (`sendMultiBlockChange`) for held items, flashlights and `packet` wand lights. Fake
   blocks only go into air or water, and the real block is restored when the light moves.
-* **Per player**: every decal entity is `visibleByDefault = false` and shown only to its viewer. That makes quality
-  presets, colour-vision palettes and the on/off switch per player. Entities are pooled and diffed: a steady light
-  costs nothing per tick; a moving one costs one teleport (interpolated) and one transformation update.
+* **Shadows** (0.4): every block cell of a lit surface checks its line of sight to the light, with one ray from the
+  centre and four from the corners where neighbouring cells disagree (soft quarter-step edges). Blocked cells merge
+  into rectangles that get black decals, weighted by how much light would have reached them. Shadows are block
+  resolution, like vanilla smooth lighting. Point-light shadows are cached with the projection and redone when blocks
+  change nearby; flashlight shadows are recomputed every pass (`shadows.*` in config.yml).
+* **Per player, packet-only** (0.4, `DisplayEntityPoolManager` + `PacketDisplays`): decals are client-only
+  item_displays made of packets. They're never in the world, never ticked or tracked by the server, and only their
+  viewer sees them. That makes quality presets, colour-vision palettes and the on/off switch per player. A decal keeps
+  a fixed anchor and carries its position in the transformation matrix, so moving it (a flashlight following the
+  aim) is one interpolated metadata change, with no teleport packet that could arrive in a different frame. Each
+  pass's spawns, updates and removes go out as one `ClientboundBundlePacket`. Freed entities stay spawned with no
+  item and are reused. If the server's classes ever don't match the reflection, hidden real entities are used
+  instead (`/lighting diagnose` says which).
+
+![Shadows](docs/shadows.png)
 
 ## Flashlights
 
-Raycast along the look vector up to `flashlights.max-distance`. At the hit point a **hotspot** decal (bright core,
+`FlashlightEngine` raycasts along the look vector up to `flashlights.max-distance` (25). At the hit point a **hotspot** decal (bright core,
 faint lens ring) and a **spill** ring lie flush on the surface. Their radius is `d · tan(θ)` (hotspot θ = cone/4,
 spill θ = cone/2). Both are stretched by `1 / cos(α)` along the beam's direction on the surface (α = incidence,
 capped at 2.5×). The transform maps model X to the ellipse's major axis, Y to its minor axis and Z to the normal
-(`Projector.flat`). Fake LIGHT blocks: 9–15 at the hit, then every 5 blocks along the beam. **Ultra** adds a
+(`SurfaceDecalProjector.flat`). Spots are clamped to the surface they land on, so a beam hitting a pillar shows on the
+pillar instead of hanging in the air. Blocks inside the cone shadow the hit surface. Fake LIGHT blocks: 9–15 at the hit, then every 5 blocks along the beam. **Ultra** adds a
 volumetric beam: four crossed planes with a longitudinal fade, rotated with `Quaternionf.rotationTo(+Z, dir)`.
 
 ![Flashlight](docs/flashlight.png)

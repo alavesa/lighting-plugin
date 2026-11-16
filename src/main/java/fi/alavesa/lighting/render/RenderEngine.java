@@ -19,15 +19,15 @@ import org.bukkit.util.Vector;
 /**
  * The per-tick loop. Once per tick: every source lists its lights near players (shared work). Then for each viewer
  * whose preset is due this tick: cull (distance, view cone), rank, cap at the preset's light count, project to
- * decals, tint with the viewer's palette, and hand the result to their {@link ViewerState}. Fake LIGHT blocks are
+ * decals, tint with the viewer's palette, and hand the result to their {@link DisplayEntityPoolManager}. Fake LIGHT blocks are
  * worked out the same way but are never capped by the decal budget and also work without the pack.
  */
 public final class RenderEngine {
 
     private final Plugin plugin;
     private final List<EmitterSource> sources = new ArrayList<>();
-    private final Projector projector = new Projector();
-    private final Map<UUID, ViewerState> viewers = new HashMap<>();
+    private final SurfaceDecalProjector projector = new SurfaceDecalProjector();
+    private final Map<UUID, DisplayEntityPoolManager> viewers = new HashMap<>();
     private final Predicate<Player> packActive;
     private LightingConfig cfg;
     private long tick;
@@ -37,11 +37,13 @@ public final class RenderEngine {
         this.cfg = cfg;
         this.packActive = packActive;
         projector.cacheTicks(cfg.projectionCacheTicks);
+        projector.shadows(cfg.shadowOptions);
     }
 
     public void reload(LightingConfig cfg) {
         this.cfg = cfg;
         projector.cacheTicks(cfg.projectionCacheTicks);
+        projector.shadows(cfg.shadowOptions);
         projector.clear();
     }
 
@@ -49,28 +51,34 @@ public final class RenderEngine {
         sources.add(s);
     }
 
-    public Projector projector() {
+    public SurfaceDecalProjector projector() {
         return projector;
     }
 
-    public ViewerState viewer(Player p) {
+    public DisplayEntityPoolManager viewer(Player p) {
         return viewers.computeIfAbsent(p.getUniqueId(),
-                k -> new ViewerState(plugin, p, PlayerSettings.load(plugin, p, cfg.defaultQuality)));
+                k -> new DisplayEntityPoolManager(plugin, p, PlayerSettings.load(plugin, p, cfg.defaultQuality)));
     }
 
     public void quit(Player p) {
-        ViewerState v = viewers.remove(p.getUniqueId());
+        DisplayEntityPoolManager v = viewers.remove(p.getUniqueId());
         if (v != null) v.clear(false);
     }
 
     public void shutdown() {
-        for (ViewerState v : viewers.values()) v.clear(true);
+        for (DisplayEntityPoolManager v : viewers.values()) v.clear(true);
         viewers.clear();
+    }
+
+    /** The client dropped all entities and fake blocks (world change, respawn). */
+    public void clientReset(Player p) {
+        DisplayEntityPoolManager v = viewers.get(p.getUniqueId());
+        if (v != null) v.clientReset();
     }
 
     /** Settings changed: drop what the player sees now; the next pass rebuilds it. */
     public void settingsChanged(Player p) {
-        ViewerState v = viewer(p);
+        DisplayEntityPoolManager v = viewer(p);
         v.settings.save(plugin, p);
         v.clear(true);
     }
@@ -78,8 +86,8 @@ public final class RenderEngine {
     /** A real block changed: cached projections near it are stale and fake lights there were overwritten. */
     public void blockChanged(World w, int x, int y, int z) {
         projector.invalidate(w, x + 0.5, y + 0.5, z + 0.5, 1.5);
-        long k = ViewerState.key(x, y, z);
-        for (ViewerState v : viewers.values()) v.forgetFake(k);
+        long k = DisplayEntityPoolManager.key(x, y, z);
+        for (DisplayEntityPoolManager v : viewers.values()) v.forgetFake(k);
     }
 
     public Map<String, Integer> sourceCounts(Player p) {
@@ -116,7 +124,7 @@ public final class RenderEngine {
         }
     }
 
-    private void render(ViewerState v, World w, List<Emitter> all, boolean resend) {
+    private void render(DisplayEntityPoolManager v, World w, List<Emitter> all, boolean resend) {
         Player p = v.player();
         PlayerSettings s = v.settings;
         if (!s.enabled) {
@@ -139,7 +147,7 @@ public final class RenderEngine {
             if (e.fakeLevel() <= 0 || e.distanceSq(ex, ey, ez) > fd2) continue;
             int lvl = (int) Math.round(e.fakeLevel() * (s.animations ? Math.max(0.35, e.anim().factor(tick, e.seed())) : 1));
             if (lvl <= 0 || !placeable(w, e.fakeX(), e.fakeY(), e.fakeZ())) continue;
-            fake.merge(ViewerState.key(e.fakeX(), e.fakeY(), e.fakeZ()), Math.min(15, lvl), Math::max);
+            fake.merge(DisplayEntityPoolManager.key(e.fakeX(), e.fakeY(), e.fakeZ()), Math.min(15, lvl), Math::max);
             if (fake.size() >= cfg.maxFakeLights) break;
         }
         v.fakes(w, fake, resend);
@@ -169,7 +177,10 @@ public final class RenderEngine {
                 if (prof.halos() && e.halo()) projector.halo(e, a, decals);
             }
             int rgb = s.palette.remap(e.rgb());
-            for (int i = start; i < decals.size(); i++) colours.put(decals.get(i).id(), rgb);
+            for (int i = start; i < decals.size(); i++) {
+                Decal d = decals.get(i);
+                colours.put(d.id(), d.kind() == Decal.Kind.SHADOW ? 0x000000 : rgb);
+            }
         }
         v.apply(decals, colours, cfg.minAlpha, cfg.poolSize);
     }

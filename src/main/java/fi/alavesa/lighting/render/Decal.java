@@ -10,7 +10,7 @@ public record Decal(String id, Kind kind, double x, double y, double z, Matrix4f
                     boolean billboard, int interp) {
 
     public enum Kind {
-        GLOW("glow"), HOTSPOT("hotspot"), SPILL("spill"), HALO("halo"), BEAM("beam");
+        GLOW("glow"), HOTSPOT("hotspot"), SPILL("spill"), HALO("halo"), BEAM("beam"), SHADOW("shadow");
 
         public final String model;
 

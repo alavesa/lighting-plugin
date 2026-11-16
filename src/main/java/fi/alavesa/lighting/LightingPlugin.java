@@ -6,7 +6,7 @@ import fi.alavesa.lighting.pack.PackService;
 import fi.alavesa.lighting.render.RenderEngine;
 import fi.alavesa.lighting.source.BlockEmitters;
 import fi.alavesa.lighting.source.FirearmsHook;
-import fi.alavesa.lighting.source.Flashlights;
+import fi.alavesa.lighting.source.FlashlightEngine;
 import fi.alavesa.lighting.source.HeldLights;
 import fi.alavesa.lighting.source.WandLights;
 import fi.alavesa.lighting.wand.LightDialogs;
@@ -43,7 +43,7 @@ public final class LightingPlugin extends JavaPlugin implements Listener {
     private RenderEngine engine;
     private BlockEmitters blocks;
     private HeldLights held;
-    private Flashlights flashlights;
+    private FlashlightEngine flashlights;
     private FirearmsHook firearms;
     private PlayerUi ui;
 
@@ -66,7 +66,7 @@ public final class LightingPlugin extends JavaPlugin implements Listener {
         firearms = new FirearmsHook(cfg);
         blocks = new BlockEmitters(this, cfg, engine);
         held = new HeldLights(this, cfg);
-        flashlights = new Flashlights(this, cfg, firearms, engine);
+        flashlights = new FlashlightEngine(this, cfg, firearms, engine);
         engine.addSource(new WandLights(registry));
         engine.addSource(blocks);
         engine.addSource(held);
@@ -167,6 +167,16 @@ public final class LightingPlugin extends JavaPlugin implements Listener {
     }
 
     @EventHandler
+    public void onWorldChange(org.bukkit.event.player.PlayerChangedWorldEvent e) {
+        engine.clientReset(e.getPlayer());
+    }
+
+    @EventHandler
+    public void onRespawn(org.bukkit.event.player.PlayerRespawnEvent e) {
+        engine.clientReset(e.getPlayer());
+    }
+
+    @EventHandler
     public void onQuit(PlayerQuitEvent e) {
         engine.quit(e.getPlayer());
     }
@@ -191,7 +201,7 @@ public final class LightingPlugin extends JavaPlugin implements Listener {
         return engine;
     }
 
-    Flashlights flashlights() {
+    FlashlightEngine flashlights() {
         return flashlights;
     }
 

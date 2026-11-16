@@ -71,6 +71,9 @@ public final class LightingConfig {
     public final int fakeResendTicks;
     public final boolean fallbackGlyphs;
 
+    // shadows
+    public final fi.alavesa.lighting.render.SurfaceDecalProjector.ShadowOptions shadowOptions;
+
     // emissive blocks
     public final boolean blocksEnabled;
     public final int blocksScanRadius;
@@ -159,6 +162,10 @@ public final class LightingConfig {
         fakeResendTicks = Math.max(20, c.getInt("render.fake-resend-ticks", 100));
         fallbackGlyphs = c.getBoolean("render.fallback-glyphs", false);
 
+        shadowOptions = new fi.alavesa.lighting.render.SurfaceDecalProjector.ShadowOptions(
+                c.getBoolean("shadows.enabled", true), clamp(c.getDouble("shadows.strength", 1.6), 0, 3),
+                c.getBoolean("shadows.flashlights", true), Math.max(9, c.getInt("shadows.max-cells-per-surface", 400)));
+
         blocksEnabled = c.getBoolean("blocks.enabled", true);
         blocksScanRadius = Math.max(1, c.getInt("blocks.scan-radius-chunks", 5));
         blocksScansPerTick = Math.max(1, c.getInt("blocks.scans-per-tick", 2));
@@ -208,7 +215,7 @@ public final class LightingConfig {
         heldProfiles = hp;
 
         flashlightsEnabled = c.getBoolean("flashlights.enabled", true);
-        flashRange = clamp(c.getDouble("flashlights.max-distance", 32), 4, 96);
+        flashRange = clamp(c.getDouble("flashlights.max-distance", 25), 4, 96);
         flashCone = clamp(c.getDouble("flashlights.cone-degrees", 34), 5, 120);
         flashColor = parseColor(c.getString("flashlights.color", "#FFF4D6"), 0xFFF4D6);
         flashBeamStep = Math.max(2, c.getDouble("flashlights.beam-light-step", 5));

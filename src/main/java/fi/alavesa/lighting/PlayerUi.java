@@ -5,10 +5,10 @@ import fi.alavesa.lighting.render.Palette;
 import fi.alavesa.lighting.render.PlayerSettings;
 import fi.alavesa.lighting.render.Quality;
 import fi.alavesa.lighting.render.RenderEngine;
-import fi.alavesa.lighting.render.ViewerState;
+import fi.alavesa.lighting.render.DisplayEntityPoolManager;
 import fi.alavesa.lighting.source.BlockEmitters;
 import fi.alavesa.lighting.source.FirearmsHook;
-import fi.alavesa.lighting.source.Flashlights;
+import fi.alavesa.lighting.source.FlashlightEngine;
 import io.papermc.paper.datacomponent.DataComponentTypes;
 import io.papermc.paper.datacomponent.item.DyedItemColor;
 import io.papermc.paper.dialog.Dialog;
@@ -51,12 +51,12 @@ public final class PlayerUi {
     private final RenderEngine engine;
     private final PackService pack;
     private final BlockEmitters blocks;
-    private final Flashlights flashlights;
+    private final FlashlightEngine flashlights;
     private final FirearmsHook firearms;
     private LightingConfig cfg;
 
     PlayerUi(Plugin plugin, LightingConfig cfg, RenderEngine engine, PackService pack, BlockEmitters blocks,
-             Flashlights flashlights, FirearmsHook firearms) {
+             FlashlightEngine flashlights, FirearmsHook firearms) {
         this.plugin = plugin;
         this.cfg = cfg;
         this.engine = engine;
@@ -174,7 +174,7 @@ public final class PlayerUi {
     // ------------------------------------------------------------------ diagnose
 
     void diagnose(CommandSender to, Player p) {
-        ViewerState v = engine.viewer(p);
+        DisplayEntityPoolManager v = engine.viewer(p);
         PlayerSettings s = v.settings;
         Status st = pack.status(p);
         boolean active = packActive(p);

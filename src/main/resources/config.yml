@@ -80,6 +80,18 @@ quality:
   high:   {max-lights: 16, max-distance: 48, interval-ticks: 2, decals: true, halos: true,  flashlight-spill: true,  beam-cone: false}
   ultra:  {max-lights: 32, max-distance: 64, interval-ticks: 1, decals: true, halos: true,  flashlight-spill: true,  beam-cone: true}
 
+# ---------------------------------------------------------------------------------------------- shadows
+# Blocks between a light and a surface cast shadows: every block cell of a lit surface checks its line of sight
+# to the light (soft edges where cells disagree); blocked cells get dark decals. Block resolution, no shaders.
+shadows:
+  enabled: true
+  # how dark a fully blocked cell is relative to the light it would have had (0 = no shadows, 3 = very dark)
+  strength: 1.6
+  # flashlight beams cast shadows too (recomputed every pass while the beam moves)
+  flashlights: true
+  # largest grid checked per lit surface (cells); bigger lights are trimmed to the middle of their pool
+  max-cells-per-surface: 400
+
 # ---------------------------------------------------------------------------------------------- emissive blocks
 # Blocks that get a coloured glow automatically. Vanilla's warm-yellow lights (torch, lantern, glowstone,
 # jack o'lantern, campfire, lava, fire, candles, end rod, beacon...) are deliberately NOT listed: vanilla already
@@ -152,7 +164,7 @@ held:
 # ---------------------------------------------------------------------------------------------- flashlights
 flashlights:
   enabled: true
-  max-distance: 32
+  max-distance: 25
   # full cone angle; the hotspot is the inner half of it
   cone-degrees: 34
   color: "#FFF4D6"

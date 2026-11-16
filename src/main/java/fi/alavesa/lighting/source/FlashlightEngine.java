@@ -25,19 +25,19 @@ import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Flashlights: our flashlight item in either hand, a headlamp (any helmet tagged {@code lighting:flashlight}), or a
+ * FlashlightEngine: our flashlight item in either hand, a headlamp (any helmet tagged {@code lighting:flashlight}), or a
  * Firearms gun with a flashlight attachment ({@link FirearmsHook}). Each tick the beam is raycast along the look
  * vector; the hit becomes a spot emitter (hotspot + spill decals, beam cone on Ultra) plus client-side LIGHT
  * blocks at the hit and every few blocks along the beam. Q (drop) while holding one toggles it.
  */
-public final class Flashlights implements EmitterSource, Listener {
+public final class FlashlightEngine implements EmitterSource, Listener {
 
     private final NamespacedKey tag;
     private final FirearmsHook firearms;
     private final RenderEngine engine;
     private LightingConfig cfg;
 
-    public Flashlights(Plugin plugin, LightingConfig cfg, FirearmsHook firearms, RenderEngine engine) {
+    public FlashlightEngine(Plugin plugin, LightingConfig cfg, FirearmsHook firearms, RenderEngine engine) {
         this.tag = new NamespacedKey(plugin, "flashlight");
         this.cfg = cfg;
         this.firearms = firearms;

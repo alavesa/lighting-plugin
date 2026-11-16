@@ -79,6 +79,17 @@ for name, prof in PROFILES.items():
                 px.append((255, 255, 255, a))
         png(f'{ROOT}/textures/item/light/{name}_{lv}.png', size, size, px)
 
+# shadow: a plain opaque square in 8 opacity steps (tinted black); shadow rectangles are block-aligned, so edges are
+# hard by design and the softness comes from the per-cell strengths
+for lv in range(LEVELS):
+    a = int(round((lv + 1) / LEVELS * 255))
+    png(f'{ROOT}/textures/item/light/shadow_{lv}.png', 16, 16, [(255, 255, 255, max(a, CUT))] * 256)
+    f = {'uv': [0, 0, 16, 16], 'texture': '#t', 'tintindex': 0}
+    write(f'{ROOT}/models/item/light/shadow_{lv}.json', {
+        'textures': {'t': f'lighting:item/light/shadow_{lv}', 'particle': f'lighting:item/light/shadow_{lv}'},
+        'elements': [{'from': [0, 0, 8], 'to': [16, 16, 8], 'shade': False,
+                      'faces': {'north': f, 'south': f}}]})
+
 # beam: u across the cone (narrow at v=0, the lamp), v along it; fades with length and towards the edges
 BW, BH = 64, 128
 for lv in range(LEVELS):
@@ -124,7 +135,7 @@ for lv in range(LEVELS):
     write(f'{ROOT}/models/item/light/beam_{lv}.json', {
         'textures': {'t': f'lighting:item/light/beam_{lv}', 'particle': f'lighting:item/light/beam_{lv}'}, 'elements': planes})
 
-for name in list(PROFILES) + ['beam']:
+for name in list(PROFILES) + ['beam', 'shadow']:
     write(f'{ROOT}/items/{name}.json', {'model': {
         'type': 'minecraft:range_dispatch', 'property': 'minecraft:custom_model_data', 'index': 0,
         'entries': [{'threshold': lv, 'model': {'type': 'minecraft:model', 'model': f'lighting:item/light/{name}_{lv}',
