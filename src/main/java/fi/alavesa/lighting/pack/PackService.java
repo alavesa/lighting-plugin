@@ -55,12 +55,12 @@ public final class PackService implements Listener {
     /** What auto resolved to: same-port or http. */
     private String effective = "http";
 
-    private final java.util.function.Consumer<Player> onLoaded;
+    private final java.util.function.BiConsumer<Player, PlayerResourcePackStatusEvent.Status> onStatus;
 
-    /** @param onLoaded called on the main thread when a player's client reports our pack loaded */
+    /** @param onStatus called on the main thread for every status the client reports for our pack */
     public PackService(Logger log, File pluginJar, Path dataFolder, LightingConfig cfg,
-                       java.util.function.Consumer<Player> onLoaded) {
-        this.onLoaded = onLoaded;
+                       java.util.function.BiConsumer<Player, PlayerResourcePackStatusEvent.Status> onStatus) {
+        this.onStatus = onStatus;
         this.log = log;
         this.pluginJar = pluginJar;
         this.dataFolder = dataFolder;
@@ -144,7 +144,6 @@ public final class PackService implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent e) {
-        fi.alavesa.lighting.effect.LightEffect.forget(e.getPlayer());
         status.remove(e.getPlayer().getUniqueId());
     }
 
@@ -152,7 +151,7 @@ public final class PackService implements Listener {
     public void onStatus(PlayerResourcePackStatusEvent e) {
         if (!e.getID().equals(PACK_ID)) return;
         status.put(e.getPlayer().getUniqueId(), e.getStatus());
-        if (e.getStatus() == PlayerResourcePackStatusEvent.Status.SUCCESSFULLY_LOADED) onLoaded.accept(e.getPlayer());
+        onStatus.accept(e.getPlayer(), e.getStatus());
     }
 
     public void send(Player p) {

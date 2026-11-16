@@ -2,6 +2,8 @@ package fi.alavesa.lighting.wand;
 
 import fi.alavesa.lighting.LightingConfig;
 import fi.alavesa.lighting.light.LightSource;
+import fi.alavesa.lighting.render.Anim;
+import io.papermc.paper.registry.data.dialog.input.SingleOptionDialogInput;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.dialog.DialogResponseView;
 import io.papermc.paper.registry.data.dialog.ActionButton;
@@ -25,7 +27,8 @@ import org.bukkit.plugin.Plugin;
 public final class LightDialogs {
 
     /** What the inputs of either dialog hold after a click. */
-    public record Values(int rgb, double radius, double intensity, boolean vanillaBlock) {
+    public record Values(int rgb, double radius, double intensity, boolean vanillaBlock, Anim anim, boolean spot,
+                         double cone) {
     }
 
     public interface EditActions {
@@ -36,6 +39,8 @@ public final class LightDialogs {
         void copyToWand(Values v);
 
         void moveToAim(Values v);
+
+        void aimSpot(Values v);
     }
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
@@ -55,13 +60,14 @@ public final class LightDialogs {
     }
 
     public void settings(Player p, Wand.Session s, Consumer<Values> apply) {
-        Values init = new Values(s.rgb, s.radius, s.intensity, s.vanillaBlock);
+        Values init = new Values(s.rgb, s.radius, s.intensity, s.vanillaBlock, s.anim, s.spot, s.cone);
         Dialog d = Dialog.create(b -> b.empty()
                 .base(DialogBase.builder(MM.deserialize("<gradient:#FFE29A:#B47CFF>Lighting Wand</gradient>"))
                         .canCloseWithEscape(true)
                         .pause(false)
                         .body(List.of(DialogBody.plainMessage(MM.deserialize(
-                                "<gray>Settings for the next light you place. A hex colour overrides the sliders.<newline>"
+                                "<gray>Settings for the next light you place. A hex colour overrides the sliders. Spotlights point"
+                                        + " where you look when you place them.<newline>"
                                         + "<dark_gray>Now: " + swatch(s.rgb) + " <gray>r " + fmt(s.radius) + ", x"
                                         + fmt(s.intensity)), 300)))
                         .inputs(inputs(init))
@@ -74,13 +80,17 @@ public final class LightDialogs {
     }
 
     public void edit(Player p, LightSource l, EditActions actions) {
-        Values init = new Values(l.rgb(), l.radius(), l.intensity(), l.vanillaBlock());
+        Values init = new Values(l.rgb(), l.radius(), l.intensity(), l.vanillaBlock(), l.anim(), l.spotDir() != null,
+                l.coneDeg());
         List<ActionButton> buttons = new ArrayList<>();
         buttons.add(ActionButton.create(MM.deserialize("<green>Save"), MM.deserialize("<gray>Apply colour and size"), 140,
                 DialogAction.customClick((view, who) -> later(() -> actions.save(read(view, init))), ONCE)));
         buttons.add(ActionButton.create(MM.deserialize("<aqua>Move to my aim"),
                 MM.deserialize("<gray>Move this light to where the wand points"), 140,
                 DialogAction.customClick((view, who) -> later(() -> actions.moveToAim(read(view, init))), ONCE)));
+        buttons.add(ActionButton.create(MM.deserialize("<gold>Aim spotlight"),
+                MM.deserialize("<gray>Make it a spotlight pointing where you look now"), 140,
+                DialogAction.customClick((view, who) -> later(() -> actions.aimSpot(read(view, init))), ONCE)));
         buttons.add(ActionButton.create(MM.deserialize("<yellow>Copy to wand"),
                 MM.deserialize("<gray>Use these settings for new lights"), 140,
                 DialogAction.customClick((view, who) -> later(() -> actions.copyToWand(read(view, init))), ONCE)));
@@ -92,8 +102,8 @@ public final class LightDialogs {
                         .canCloseWithEscape(true)
                         .pause(false)
                         .body(List.of(DialogBody.plainMessage(MM.deserialize(
-                                swatch(l.rgb()) + " <gray>at <white>" + where + "</white>, shader slot <white>"
-                                        + (l.slot() < 0 ? "none (world full)" : String.valueOf(l.slot()))), 300)))
+                                swatch(l.rgb()) + " <gray>at <white>" + where + "</white>, <white>"
+                                        + (l.spotDir() == null ? "point light" : "spotlight")), 300)))
                         .inputs(inputs(init))
                         .build())
                 .type(DialogType.multiAction(buttons).columns(2)
@@ -113,7 +123,14 @@ public final class LightDialogs {
                         (float) cfg.radiusMax).step((float) cfg.radiusStep).initial((float) v.radius).width(300).build(),
                 DialogInput.numberRange("intensity", MM.deserialize("<yellow>Intensity"), 0.1f, 3.9f).step(0.1f)
                         .initial((float) LightingConfig.clamp(v.intensity, 0.1, 3.9)).width(300).build(),
-                DialogInput.bool("vanilla", MM.deserialize("<gray>Vanilla light block (works without the pack)"))
+                DialogInput.singleOption("anim", MM.deserialize("<gray>Animation"), List.of(
+                        opt("none", "None", v.anim == Anim.NONE), opt("pulse", "Pulse", v.anim == Anim.PULSE),
+                        opt("flicker", "Flicker", v.anim == Anim.FLICKER), opt("strobe", "Strobe", v.anim == Anim.STROBE)))
+                        .width(300).build(),
+                DialogInput.bool("spot", MM.deserialize("<gray>Spotlight (directional)")).initial(v.spot).build(),
+                DialogInput.numberRange("cone", MM.deserialize("<yellow>Spotlight cone (degrees)"), 10f, 120f).step(5f)
+                        .initial((float) LightingConfig.clamp(v.cone, 10, 120)).width(300).build(),
+                DialogInput.bool("vanilla", MM.deserialize("<gray>Vanilla light block (brightness for everyone)"))
                         .initial(v.vanillaBlock).build());
     }
 
@@ -128,8 +145,16 @@ public final class LightDialogs {
         Float radius = view.getFloat("radius");
         Float intensity = view.getFloat("intensity");
         Boolean vanilla = view.getBoolean("vanilla");
+        Anim anim = Anim.parse(view.getText("anim"));
+        Boolean spot = view.getBoolean("spot");
+        Float cone = view.getFloat("cone");
         return new Values(rgb, radius == null ? init.radius : cfg.clampRadius(radius),
-                intensity == null ? init.intensity : intensity, vanilla == null ? init.vanillaBlock : vanilla);
+                intensity == null ? init.intensity : intensity, vanilla == null ? init.vanillaBlock : vanilla,
+                anim == null ? init.anim : anim, spot == null ? init.spot : spot, cone == null ? init.cone : cone);
+    }
+
+    private static SingleOptionDialogInput.OptionEntry opt(String id, String label, boolean initial) {
+        return SingleOptionDialogInput.OptionEntry.create(id, MM.deserialize(label), initial);
     }
 
     private static int num(DialogResponseView v, String key, int fallback) {

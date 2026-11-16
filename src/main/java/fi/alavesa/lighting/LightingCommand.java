@@ -1,11 +1,13 @@
 package fi.alavesa.lighting;
 
-import fi.alavesa.lighting.effect.LightEffect;
 import fi.alavesa.lighting.light.LightRegistry;
 import fi.alavesa.lighting.light.LightSource;
-import fi.alavesa.lighting.pack.PackService;
+import fi.alavesa.lighting.render.Anim;
+import fi.alavesa.lighting.render.Palette;
+import fi.alavesa.lighting.render.Quality;
 import fi.alavesa.lighting.wand.LightDialogs;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import org.bukkit.Bukkit;
@@ -15,13 +17,17 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jspecify.annotations.Nullable;
 
-/** /lighting give | list | info | remove | tp | removeall | shader | pack | reload */
+/**
+ * /lighting give | create | list | info | remove | tp | removeall | settings | diagnose | pack | reload.
+ * settings and diagnose (for yourself) are for everyone; the rest is op.
+ */
 public final class LightingCommand implements TabExecutor {
 
-    private static final List<String> SUBS = List.of("give", "create", "list", "info", "remove", "tp", "removeall", "shader",
-            "pack", "reload");
+    private static final List<String> SUBS = List.of("settings", "diagnose", "give", "create", "list", "info", "remove",
+            "tp", "removeall", "pack", "reload");
 
     private final LightingPlugin plugin;
 
@@ -42,19 +48,54 @@ public final class LightingCommand implements TabExecutor {
         }
         LightRegistry reg = plugin.registry();
         switch (sub) {
-            case "give" -> {
-                Player target = a.length > 1 ? Bukkit.getPlayerExact(a[1]) : s instanceof Player p ? p : null;
+            case "settings" -> {
+                if (!(s instanceof Player p)) {
+                    s.sendMessage(LightDialogs.mm("<red>Players only."));
+                    return true;
+                }
+                if (a.length >= 3) {
+                    if (plugin.ui().setting(p, a[1], a[2])) {
+                        s.sendMessage(LightDialogs.mm("<gold>Lighting</gold> <gray>» saved: "
+                                + PlayerUi.summary(plugin.engine().viewer(p).settings)));
+                    } else {
+                        s.sendMessage(LightDialogs.mm("<red>Usage: /" + label + " settings [enabled|quality|animations|palette|flashlight] <value>"));
+                    }
+                } else {
+                    plugin.ui().openSettings(p);
+                }
+            }
+            case "diagnose" -> {
+                Player target = a.length > 1 && s.hasPermission("lighting.admin") ? Bukkit.getPlayerExact(a[1])
+                        : s instanceof Player p ? p : null;
                 if (target == null) {
                     s.sendMessage(LightDialogs.mm("<red>Player not found."));
                     return true;
                 }
-                target.getInventory().addItem(plugin.wand().create());
-                s.sendMessage(LightDialogs.mm("<gray>Gave a Lighting Wand to <white>" + target.getName()));
+                plugin.ui().diagnose(s, target);
+            }
+            case "give" -> {
+                // /lighting give [wand|flashlight|headlamp] [player]
+                String what = a.length > 1 && List.of("wand", "flashlight", "headlamp").contains(a[1].toLowerCase(Locale.ROOT))
+                        ? a[1].toLowerCase(Locale.ROOT) : "wand";
+                int pi = a.length > 1 && what.equals(a[1].toLowerCase(Locale.ROOT)) ? 2 : 1;
+                Player target = a.length > pi ? Bukkit.getPlayerExact(a[pi]) : s instanceof Player p ? p : null;
+                if (target == null) {
+                    s.sendMessage(LightDialogs.mm("<red>Player not found."));
+                    return true;
+                }
+                ItemStack it = switch (what) {
+                    case "flashlight" -> plugin.wand().flashlight(plugin.flashlights().tag());
+                    case "headlamp" -> plugin.wand().headlamp(plugin.flashlights().tag());
+                    default -> plugin.wand().create();
+                };
+                target.getInventory().addItem(it);
+                s.sendMessage(LightDialogs.mm("<gray>Gave a " + what + " to <white>" + target.getName()));
             }
             case "create" -> {
-                // /lighting create <world> <x> <y> <z> <#hex> <radius> [intensity]  (console and command blocks too)
+                // /lighting create <world> <x> <y> <z> <#hex> <radius> [intensity] [animation]
                 if (a.length < 7) {
-                    s.sendMessage(LightDialogs.mm("<red>Usage: /" + label + " create <world> <x> <y> <z> <#hex> <radius> [intensity]"));
+                    s.sendMessage(LightDialogs.mm("<red>Usage: /" + label
+                            + " create <world> <x> <y> <z> <#hex> <radius> [intensity] [none|pulse|flicker|strobe]"));
                     return true;
                 }
                 World w = Bukkit.getWorld(a[1]);
@@ -63,9 +104,11 @@ public final class LightingCommand implements TabExecutor {
                     s.sendMessage(LightDialogs.mm("<red>Unknown world or colour."));
                     return true;
                 }
+                Anim anim = a.length > 8 ? Anim.parse(a[8]) : Anim.NONE;
                 Location at = new Location(w, parse(a[2], 0), parse(a[3], 0), parse(a[4], 0));
-                LightSource l = reg.create(at, rgb, parse(a[6], 6), a.length > 7 ? parse(a[7], 1) : 1, true, null);
-                if (l == null) s.sendMessage(LightDialogs.mm("<red>That world is full (max-per-world)."));
+                LightSource l = reg.create(at, rgb, parse(a[6], 6), a.length > 7 ? parse(a[7], 1) : 1, true,
+                        anim == null ? Anim.NONE : anim, null, 40, null);
+                if (l == null) s.sendMessage(LightDialogs.mm("<red>That world is full (lights.max-per-world)."));
                 else {
                     plugin.vfx().placed(at, l.radius(), l.rgb());
                     s.sendMessage(line(l));
@@ -90,7 +133,8 @@ public final class LightingCommand implements TabExecutor {
                 if (l == null) return true;
                 s.sendMessage(line(l));
                 s.sendMessage(LightDialogs.mm("<gray>  intensity <white>" + LightDialogs.fmt(l.intensity())
-                        + "</white>, vanilla light block <white>" + l.vanillaBlock() + "</white>, owner <white>"
+                        + "</white>, animation <white>" + l.anim().name().toLowerCase(Locale.ROOT)
+                        + "</white>, light block <white>" + l.vanillaBlock() + "</white>, owner <white>"
                         + (l.owner() == null ? "-" : Bukkit.getOfflinePlayer(l.owner()).getName())));
             }
             case "remove" -> {
@@ -127,33 +171,20 @@ public final class LightingCommand implements TabExecutor {
                 }
                 s.sendMessage(LightDialogs.mm("<gray>Removed " + n + " lights from " + w.getName()));
             }
-            case "shader" -> {
-                if (!(s instanceof Player p)) return true;
-                if (!LightEffect.available()) {
-                    s.sendMessage(LightDialogs.mm("<yellow>This server has no per-player post effects (needs Minecraft 26.3)."
-                            + " Lights show as vanilla light + particles."));
-                    return true;
-                }
-                boolean on = a.length > 1 ? a[1].equalsIgnoreCase("on") : !LightEffect.has(p);
-                if (on) LightEffect.enable(p);
-                else LightEffect.disable(p);
-                s.sendMessage(LightDialogs.mm("<gray>Coloured light shading <white>" + (on ? "on" : "off")));
-            }
             case "pack" -> {
-                PackService pack = plugin.pack();
                 if (a.length > 1) {
                     Player t = Bukkit.getPlayerExact(a[1]);
                     if (t != null) {
-                        pack.send(t);
+                        plugin.pack().send(t);
                         s.sendMessage(LightDialogs.mm("<gray>Pack sent to <white>" + t.getName()));
                     }
                     return true;
                 }
-                s.sendMessage(LightDialogs.mm("<gray>pack sha1 <white>" + pack.sha1() + "</white>, post effects "
-                        + (LightEffect.available() ? "<green>available (" + LightEffect.backend() + ")" : "<yellow>not available (26.2)")));
+                s.sendMessage(LightDialogs.mm("<gray>pack sha1 <white>" + plugin.pack().sha1() + "</white>, delivery <white>"
+                        + plugin.pack().delivery()));
                 for (Player p : Bukkit.getOnlinePlayers()) {
-                    s.sendMessage(LightDialogs.mm("<gray>  " + p.getName() + ": <white>" + pack.status(p)
-                            + "</white> shading " + (LightEffect.has(p) ? "<green>on" : "<red>off")));
+                    s.sendMessage(LightDialogs.mm("<gray>  " + p.getName() + ": <white>" + plugin.pack().status(p)
+                            + "</white> " + PlayerUi.summary(plugin.engine().viewer(p).settings)));
                 }
             }
             case "reload" -> {
@@ -184,8 +215,8 @@ public final class LightingCommand implements TabExecutor {
         World w = l.world();
         return LightDialogs.mm("<gray> <white>" + l.shortId() + "</white> " + LightDialogs.swatch(l.rgb()) + " r "
                 + LightDialogs.fmt(l.radius()) + " <dark_gray>" + (w == null ? "?" : w.getName())
-                + String.format(Locale.ROOT, " %.1f %.1f %.1f", l.x(), l.y(), l.z()) + " slot "
-                + (l.slot() < 0 ? "-" : l.slot()));
+                + String.format(Locale.ROOT, " %.1f %.1f %.1f", l.x(), l.y(), l.z())
+                + (l.spotDir() != null ? " spot" : "") + (l.anim() != Anim.NONE ? " " + l.anim().name().toLowerCase(Locale.ROOT) : ""));
     }
 
     private static double parse(String v, double fallback) {
@@ -197,21 +228,37 @@ public final class LightingCommand implements TabExecutor {
     }
 
     private static void help(CommandSender s, String label) {
-        s.sendMessage(LightDialogs.mm("<gold>Lighting <gray>/" + label + " give [player] | create <world> <x> <y> <z> <#hex> <radius> [intensity] | list [radius|all] | info [id] | "
-                + "remove [id] | tp <id> | removeall <world> confirm | shader [on|off] | pack [player] | reload"));
+        s.sendMessage(LightDialogs.mm("<gold>Lighting <gray>/" + label + " settings | diagnose [player] | give [wand|flashlight|headlamp] [player] | "
+                + "create <world> <x> <y> <z> <#hex> <radius> [intensity] [animation] | list [radius|all] | info [id] | "
+                + "remove [id] | tp <id> | removeall <world> confirm | pack [player] | reload"));
     }
 
     @Override
     public List<String> onTabComplete(CommandSender s, Command cmd, String label, String[] a) {
-        if (a.length == 1) return SUBS.stream().filter(x -> x.startsWith(a[0].toLowerCase(Locale.ROOT))).toList();
+        if (a.length == 1) {
+            return SUBS.stream().filter(x -> x.startsWith(a[0].toLowerCase(Locale.ROOT)))
+                    .filter(x -> s.hasPermission("lighting.command." + x) || s.hasPermission("lighting.admin")).toList();
+        }
+        String sub = a[0].toLowerCase(Locale.ROOT);
         if (a.length == 2) {
-            return switch (a[0].toLowerCase(Locale.ROOT)) {
-                case "give", "pack" -> Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+            return switch (sub) {
+                case "give" -> List.of("wand", "flashlight", "headlamp");
+                case "pack", "diagnose" -> Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
                 case "info", "remove", "tp" -> plugin.registry().all().stream().map(LightSource::shortId).toList();
                 case "create", "removeall" -> Bukkit.getWorlds().stream().map(World::getName).toList();
-                case "shader" -> List.of("on", "off");
+                case "settings" -> List.of("enabled", "quality", "animations", "palette", "flashlight");
                 default -> List.of();
             };
+        }
+        if (a.length == 3) {
+            if (sub.equals("give")) return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
+            if (sub.equals("settings")) {
+                return switch (a[1].toLowerCase(Locale.ROOT)) {
+                    case "quality" -> Arrays.stream(Quality.values()).map(q -> q.name().toLowerCase(Locale.ROOT)).toList();
+                    case "palette" -> Arrays.stream(Palette.values()).map(q -> q.name().toLowerCase(Locale.ROOT)).toList();
+                    default -> List.of("on", "off");
+                };
+            }
         }
         return List.of();
     }

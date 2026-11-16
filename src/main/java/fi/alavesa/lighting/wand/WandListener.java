@@ -182,11 +182,12 @@ public final class WandListener implements Listener {
 
     private void place(Player p, Wand.Session s) {
         Location at = placement(p);
-        LightSource l = registry.create(at, s.rgb, s.radius, s.intensity, s.vanillaBlock, p.getUniqueId());
+        LightSource l = registry.create(at, s.rgb, s.radius, s.intensity, s.vanillaBlock, s.anim,
+                s.spot ? p.getEyeLocation().getDirection() : null, s.cone, p.getUniqueId());
         if (l == null) {
             vfx.denied(p);
             p.sendMessage(LightDialogs.mm("<red>This world already has " + cfg.maxLightsPerWorld
-                    + " lights (the shader's limit). Remove one first."));
+                    + " lights (lights.max-per-world). Remove one first."));
             return;
         }
         vfx.placed(at, l.radius(), l.rgb());
@@ -216,6 +217,9 @@ public final class WandListener implements Listener {
             s.radius = v.radius();
             s.intensity = v.intensity();
             s.vanillaBlock = v.vanillaBlock();
+            s.anim = v.anim();
+            s.spot = v.spot();
+            s.cone = v.cone();
         });
     }
 
@@ -224,7 +228,10 @@ public final class WandListener implements Listener {
             @Override
             public void save(LightDialogs.Values v) {
                 if (gone(l)) return;
-                registry.update(l, v.rgb(), v.radius(), v.intensity(), v.vanillaBlock());
+                // turning "spotlight" off makes it a point light; turning it on keeps / picks a direction
+                org.bukkit.util.Vector dir = v.spot() ? (l.spotDir() != null ? l.spotDir()
+                        : p.getEyeLocation().getDirection()) : null;
+                registry.update(l, v.rgb(), v.radius(), v.intensity(), v.vanillaBlock(), v.anim(), dir, v.cone());
                 Location at = l.location();
                 if (at != null) vfx.edited(at, l.radius(), l.rgb());
             }
@@ -241,6 +248,9 @@ public final class WandListener implements Listener {
                 s.radius = v.radius();
                 s.intensity = v.intensity();
                 s.vanillaBlock = v.vanillaBlock();
+                s.anim = v.anim();
+                s.spot = v.spot();
+                s.cone = v.cone();
                 p.sendActionBar(LightDialogs.mm("<gray>Wand now places " + LightDialogs.swatch(s.rgb)));
             }
 
@@ -248,9 +258,19 @@ public final class WandListener implements Listener {
             public void moveToAim(LightDialogs.Values v) {
                 if (gone(l)) return;
                 Location to = placement(p);
-                registry.update(l, v.rgb(), v.radius(), v.intensity(), v.vanillaBlock());
+                registry.update(l, v.rgb(), v.radius(), v.intensity(), v.vanillaBlock(), v.anim(),
+                        v.spot() ? (l.spotDir() != null ? l.spotDir() : p.getEyeLocation().getDirection()) : null, v.cone());
                 registry.move(l, to);
                 vfx.placed(to, l.radius(), l.rgb());
+            }
+
+            @Override
+            public void aimSpot(LightDialogs.Values v) {
+                if (gone(l)) return;
+                registry.update(l, v.rgb(), v.radius(), v.intensity(), v.vanillaBlock(), v.anim(),
+                        p.getEyeLocation().getDirection(), v.cone());
+                Location at = l.location();
+                if (at != null) vfx.edited(at, Math.min(2, l.radius()), l.rgb());
             }
         });
     }

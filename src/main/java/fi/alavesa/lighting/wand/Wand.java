@@ -30,6 +30,10 @@ public final class Wand {
         public double radius;
         public double intensity;
         public boolean vanillaBlock;
+        public fi.alavesa.lighting.render.Anim anim = fi.alavesa.lighting.render.Anim.NONE;
+        /** Place spotlights (aimed where you look when placing) instead of point lights. */
+        public boolean spot;
+        public double cone = 40;
         public int preset;
         /** For the resize animation: the radius before the last change and the tick it changed. */
         public double fromRadius;
@@ -80,11 +84,33 @@ public final class Wand {
                 line("<yellow>Right-click</yellow> <gray>place a light / edit the one you aim at"),
                 line("<yellow>Sneak + scroll</yellow> <gray>resize the light"),
                 line("<yellow>Left-click</yellow> <gray>next colour preset"),
-                line("<yellow>Sneak + right-click</yellow> <gray>colour, radius, intensity"),
+                line("<yellow>Sneak + right-click</yellow> <gray>colour, radius, intensity, animation, spotlight"),
                 line("<yellow>Sneak + left-click</yellow> <gray>delete the light you aim at"))));
         it.setData(DataComponentTypes.ENCHANTMENT_GLINT_OVERRIDE, true);
         it.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
         it.editPersistentDataContainer(pdc -> pdc.set(tag, PersistentDataType.BYTE, (byte) 1));
+        return it;
+    }
+
+    /** Hand-held flashlight: Q toggles it, the beam follows your view. */
+    public ItemStack flashlight(NamespacedKey flashTag) {
+        ItemStack it = ItemStack.of(Material.STICK);
+        it.setData(DataComponentTypes.ITEM_MODEL, Key.key("lighting", "flashlight"));
+        it.setData(DataComponentTypes.ITEM_NAME, MM.deserialize("<white>Flashlight"));
+        it.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(line("<gray>Hold to light the way."),
+                line("<yellow>Q</yellow> <gray>switch on/off"))));
+        it.setData(DataComponentTypes.MAX_STACK_SIZE, 1);
+        it.editPersistentDataContainer(pdc -> pdc.set(flashTag, PersistentDataType.BYTE, (byte) 1));
+        return it;
+    }
+
+    /** Helmet-mounted flashlight. */
+    public ItemStack headlamp(NamespacedKey flashTag) {
+        ItemStack it = ItemStack.of(Material.LEATHER_HELMET);
+        it.setData(DataComponentTypes.ITEM_NAME, MM.deserialize("<white>Headlamp"));
+        it.setData(DataComponentTypes.LORE, ItemLore.lore(List.of(line("<gray>Wear it: the beam follows your view."),
+                line("<dark_gray>/lighting settings to switch it off"))));
+        it.editPersistentDataContainer(pdc -> pdc.set(flashTag, PersistentDataType.BYTE, (byte) 1));
         return it;
     }
 

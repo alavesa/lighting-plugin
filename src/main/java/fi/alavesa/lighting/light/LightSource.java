@@ -1,10 +1,11 @@
 package fi.alavesa.lighting.light;
 
+import fi.alavesa.lighting.render.Anim;
 import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.entity.ItemDisplay;
+import org.bukkit.util.Vector;
 import org.jspecify.annotations.Nullable;
 
 /** One placed light. Position is the light centre (block centre of the vanilla light block when there is one). */
@@ -19,12 +20,14 @@ public final class LightSource {
     double radius;
     double intensity;
     boolean vanillaBlock;
+    Anim anim = Anim.NONE;
+    /** Spotlight direction (unit), or null for a point light. */
+    @Nullable Vector spotDir;
+    double coneDeg = 40;
     final @Nullable UUID owner;
     final long created;
 
     // runtime only
-    int slot = -1;
-    @Nullable ItemDisplay marker;
     /** True when the LIGHT block at the centre was put there by us (only then is it removed with the light). */
     boolean ownsBlock;
 
@@ -80,8 +83,16 @@ public final class LightSource {
         return vanillaBlock;
     }
 
-    public int slot() {
-        return slot;
+    public Anim anim() {
+        return anim;
+    }
+
+    public @Nullable Vector spotDir() {
+        return spotDir == null ? null : spotDir.clone();
+    }
+
+    public double coneDeg() {
+        return coneDeg;
     }
 
     public @Nullable UUID owner() {

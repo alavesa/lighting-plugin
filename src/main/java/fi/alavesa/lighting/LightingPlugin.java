@@ -1,9 +1,14 @@
 package fi.alavesa.lighting;
 
-import fi.alavesa.lighting.effect.LightEffect;
 import fi.alavesa.lighting.light.LightRegistry;
 import fi.alavesa.lighting.light.LightStore;
 import fi.alavesa.lighting.pack.PackService;
+import fi.alavesa.lighting.render.RenderEngine;
+import fi.alavesa.lighting.source.BlockEmitters;
+import fi.alavesa.lighting.source.FirearmsHook;
+import fi.alavesa.lighting.source.Flashlights;
+import fi.alavesa.lighting.source.HeldLights;
+import fi.alavesa.lighting.source.WandLights;
 import fi.alavesa.lighting.wand.LightDialogs;
 import fi.alavesa.lighting.wand.Wand;
 import fi.alavesa.lighting.wand.WandListener;
@@ -14,16 +19,16 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
- * Coloured lights for vanilla clients.
+ * Coloured lights for vanilla clients, without shaders.
  *
- * <p>Server side a light is a record in lights.yml plus two world objects: a vanilla LIGHT block (real block light,
- * works for everyone) and a tiny item_display "marker" whose item carries the light's slot, colour, radius and
- * intensity. Client side the pack's core/item shader recognises the marker, and instead of drawing it writes that
- * data into a few pixels of the frame; the post effect lighting:colored_lights (Player.postEffects(), 26.3+) reads
- * them back, rebuilds each pixel's position from depth and adds the coloured light.
+ * <p>Sources (wand lights, emissive blocks, held/worn items, flashlights) list their lights each tick. The
+ * {@link RenderEngine} turns them, per player, into soft tinted decals (item_display entities only that player
+ * sees, using the pack's alpha-gradient models) projected onto the surrounding surfaces, plus client-side LIGHT
+ * blocks for real brightness. Players without the pack get the brightness only.
  */
 public final class LightingPlugin extends JavaPlugin implements Listener {
 
@@ -35,84 +40,135 @@ public final class LightingPlugin extends JavaPlugin implements Listener {
     private LightDialogs dialogs;
     private WandListener wandListener;
     private PackService pack;
+    private RenderEngine engine;
+    private BlockEmitters blocks;
+    private HeldLights held;
+    private Flashlights flashlights;
+    private FirearmsHook firearms;
+    private PlayerUi ui;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         migratePackDelivery();
-        cfg = new LightingConfig(getConfig());
+        migrateConfig();
+        cfg = new LightingConfig(getConfig(), getLogger());
 
-        registry = new LightRegistry(this, cfg);
+        registry = new LightRegistry(cfg);
         store = new LightStore(this);
         int n = store.load(registry, cfg);
         registry.onChange(() -> store.markDirty(registry));
+
+        pack = new PackService(getLogger(), getFile(), getDataFolder().toPath(), cfg, (p, st) -> ui.status(p, st));
+        pack.start();
+
+        engine = new RenderEngine(this, cfg, p -> ui.packActive(p));
+        firearms = new FirearmsHook(cfg);
+        blocks = new BlockEmitters(this, cfg, engine);
+        held = new HeldLights(this, cfg);
+        flashlights = new Flashlights(this, cfg, firearms, engine);
+        engine.addSource(new WandLights(registry));
+        engine.addSource(blocks);
+        engine.addSource(held);
+        engine.addSource(flashlights);
+        ui = new PlayerUi(this, cfg, engine, pack, blocks, flashlights, firearms);
 
         wand = new Wand(this, cfg);
         vfx = new WandVfx(this, cfg);
         dialogs = new LightDialogs(this, cfg);
         wandListener = new WandListener(this, cfg, registry, wand, vfx, dialogs);
 
-        pack = new PackService(getLogger(), getFile(), getDataFolder().toPath(), cfg, this::packLoaded);
-        pack.start();
-
         var pm = getServer().getPluginManager();
         pm.registerEvents(registry, this);
         pm.registerEvents(wandListener, this);
         pm.registerEvents(pack, this);
+        pm.registerEvents(blocks, this);
+        pm.registerEvents(flashlights, this);
         pm.registerEvents(this, this);
 
         LightingCommand cmd = new LightingCommand(this);
         Objects.requireNonNull(getCommand("lighting")).setExecutor(cmd);
         Objects.requireNonNull(getCommand("lighting")).setTabCompleter(cmd);
 
-        getServer().getScheduler().runTaskTimer(this, wandListener::tick, 1L, 1L);
-        // markers for lights in chunks that are already loaded (spawn chunks, /reload)
-        getServer().getScheduler().runTask(this, registry::materializeLoaded);
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            wandListener.tick();
+            engine.tick();
+            blocks.tick(engine.tickCount());
+        }, 1L, 1L);
 
-        getLogger().info("Loaded " + n + " lights. Coloured shading: "
-                + (LightEffect.available() ? "post effects available (26.3+)" : "NOT available on this version, lights are "
-                + "vanilla light + particles only"));
+        getLogger().info("Loaded " + n + " lights, " + cfg.blockProfiles.size() + " emissive block profiles, "
+                + cfg.heldProfiles.size() + " held light items. Firearms "
+                + (firearms.present() ? "found: flashlight attachments enabled" : "not installed") + ".");
     }
 
     @Override
     public void onDisable() {
-        if (registry != null) {
-            registry.shutdown();
-            store.saveNow(registry);
-        }
+        if (engine != null) engine.shutdown();
+        if (registry != null) store.saveNow(registry);
         if (pack != null) pack.stop();
-        for (Player p : getServer().getOnlinePlayers()) LightEffect.disable(p);
     }
 
     void reloadAll() {
         reloadConfig();
-        cfg = new LightingConfig(getConfig());
+        cfg = new LightingConfig(getConfig(), getLogger());
         registry.reload(cfg);
+        engine.reload(cfg);
+        blocks.reload(cfg);
+        held.reload(cfg);
+        flashlights.reload(cfg);
+        firearms.reload(cfg);
+        ui.reload(cfg);
         wand.reload(cfg);
         vfx.reload(cfg);
         dialogs.reload(cfg);
         wandListener.reload(cfg);
         pack.reload(cfg);
-        for (Player p : getServer().getOnlinePlayers()) {
-            if (shadingWanted(p)) LightEffect.enable(p);
-            else LightEffect.disable(p);
+        for (Player p : getServer().getOnlinePlayers()) engine.settingsChanged(p);
+    }
+
+    /**
+     * 0.2: configs written by 0.1 say pack.delivery: http on port 8165, which players behind a firewall never reach
+     * (no coloured light). An untouched default is switched to auto (served on the Minecraft port) once.
+     */
+    private void migratePackDelivery() {
+        var c = getConfig();
+        if ("http".equalsIgnoreCase(c.getString("pack.delivery")) && c.getInt("pack.http.port", 8165) == 8165
+                && !c.getBoolean("pack.delivery-migrated", false)) {
+            c.set("pack.delivery", "auto");
+            c.set("pack.delivery-migrated", true);
+            saveConfig();
+            getLogger().info("pack.delivery: http -> auto: the Lighting pack is now served on the Minecraft port. "
+                    + "Set pack.delivery: http to go back to port 8165.");
         }
+    }
+
+    /**
+     * 0.3: configs from 0.1/0.2 lack the block/held/flashlight sections (Bukkit then hands out EMPTY sections, not the
+     * jar's defaults), and still have the shader section. Copy every missing default in, drop what is obsolete.
+     */
+    private void migrateConfig() {
+        var c = getConfig();
+        boolean old = c.contains("shader", true) || !c.contains("blocks.profiles", true);
+        if (!old) return;
+        c.set("shader", null);
+        c.set("lights.vanilla-light-block", null);
+        c.set("lights.marker-view-range", null);
+        c.set("pack.required", null);
+        c.options().copyDefaults(true);
+        saveConfig();
+        getLogger().info("config.yml updated for 0.3 (no shaders): added emissive blocks, held lights, flashlights, "
+                + "quality presets; removed the shader section.");
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent e) {
-        // a merged pack (delivery none) never reports our pack id: assume it is there
-        if (cfg.packDelivery.equals("none") || !cfg.requirePackForEffect) {
-            if (shadingWanted(e.getPlayer())) LightEffect.enable(e.getPlayer());
-        }
+        engine.viewer(e.getPlayer());
+        if (pack.delivery().equals("none")) ui.joinedWithoutOwnPack(e.getPlayer());
     }
 
-    private void packLoaded(Player p) {
-        if (shadingWanted(p)) LightEffect.enable(p);
-    }
-
-    private boolean shadingWanted(Player p) {
-        return cfg.effectEnabled && (!cfg.requirePackForEffect || pack.loaded(p));
+    @EventHandler
+    public void onQuit(PlayerQuitEvent e) {
+        engine.quit(e.getPlayer());
     }
 
     LightRegistry registry() {
@@ -131,19 +187,15 @@ public final class LightingPlugin extends JavaPlugin implements Listener {
         return pack;
     }
 
-    /**
-     * 0.2: configs written by 0.1 say pack.delivery: http on port 8165, which players behind a firewall never reach
-     * (no coloured light). An untouched default is switched to auto (served on the Minecraft port) once.
-     */
-    private void migratePackDelivery() {
-        var c = getConfig();
-        if ("http".equalsIgnoreCase(c.getString("pack.delivery")) && c.getInt("pack.http.port", 8165) == 8165
-                && !c.getBoolean("pack.delivery-migrated", false)) {
-            c.set("pack.delivery", "auto");
-            c.set("pack.delivery-migrated", true);
-            saveConfig();
-            getLogger().info("pack.delivery: http -> auto: the Lighting pack is now served on the Minecraft port. "
-                    + "Set pack.delivery: http to go back to port 8165.");
-        }
+    RenderEngine engine() {
+        return engine;
+    }
+
+    Flashlights flashlights() {
+        return flashlights;
+    }
+
+    PlayerUi ui() {
+        return ui;
     }
 }

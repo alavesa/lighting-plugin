@@ -1,11 +1,12 @@
-# Lighting - coloured lights placed with the Lighting Wand.
-# Colour shading needs Minecraft 26.3 (per-player post effects) and the Lighting resource pack.
-# Without them every light is still a vanilla light block plus wand particles.
+# Lighting - coloured lights for vanilla clients, WITHOUT shaders.
+# Coloured light = soft, tinted, alpha-gradient decals from the Lighting resource pack, drawn by display entities
+# that only the viewing player sees, projected onto floors/walls/ceilings. Real brightness = vanilla LIGHT blocks
+# (real blocks for wand lights, client-side "fake" ones for held items and flashlights).
+# Players without the pack get the brightness only ("fallback mode").
 
 lights:
   radius:
     min: 1.0
-    # at most 31.5 (the shader carries radius * 8 in one byte)
     max: 24.0
     # one sneak+scroll notch
     step: 0.5
@@ -25,12 +26,10 @@ lights:
       containment: "#4FD8FF"
       ultraviolet: "#9B5CFF"
       sodium: "#FFB000"
-  # also place a vanilla LIGHT block at each light's centre (only in air/water; removed with the light)
-  vanilla-light-block: true
-  # the shader reads 64 lights per frame; this is per world (1..64)
-  max-per-world: 64
-  # item_display view range of the markers (x 64 blocks, scaled by the client's entity distance)
-  marker-view-range: 2.0
+  # brightness for wand lights: real (a LIGHT block in the world, everyone sees it, survives anything) |
+  # packet (client-side LIGHT blocks per player, nothing in the world) | none (colour only)
+  light-block: real
+  max-per-world: 512
 
 wand:
   # how far a new light goes: the air block in front of the aimed face, or this far in mid-air
@@ -42,22 +41,135 @@ wand:
 vfx:
   preview:
     interval-ticks: 2
-    # sphere ring density, and the cap per ring (big radii)
     points-per-block: 3.0
     max-points-per-ring: 96
-    # dots on existing lights near the wand holder
     show-lights-within: 32.0
   trail:
     enabled: true
     visible-to: 32
     swing-arc: true
 
-shader:
-  # send the colour post effect (lighting:colored_lights) to players
-  enabled: true
-  # only once their client confirmed the Lighting pack loaded (delivery none: assumed loaded)
-  require-pack: true
+# ---------------------------------------------------------------------------------------------- rendering
+render:
+  # what new players get; each player can change theirs with /lighting settings
+  default-quality: high
+  # decal opacity at intensity 1 (0..1). Decals come in 8 opacity steps.
+  opacity: 0.5
+  # decals fainter than this are not drawn at all (brightness cutoff)
+  min-alpha: 0.05
+  # idle decal entities kept per player for reuse
+  pool-size: 24
+  # lights outside this view cone (degrees, around the look direction) are skipped unless the player is inside them
+  frustum-degrees: 130
+  # point-light projections (6 raycasts) are cached this long; block changes nearby clear them early
+  projection-cache-ticks: 100
+  # max length of the volumetric flashlight beam (Ultra)
+  beam-length: 16
+  # client-side LIGHT blocks (held items, flashlights, packet wand lights): how far, how many per player
+  fake-light-distance: 48
+  max-fake-lights: 48
+  # re-send them this often (a chunk resend on the client wipes them)
+  fake-resend-ticks: 100
+  # fallback mode (no pack): show a soft coloured "●" text glyph at each coloured light (vanilla TextDisplay)
+  fallback-glyphs: false
 
+# Quality presets. LOW = fallback: no decals (brightness only). Override any value per preset.
+quality:
+  low:    {max-lights: 0,  max-distance: 32, interval-ticks: 4, decals: false}
+  medium: {max-lights: 8,  max-distance: 32, interval-ticks: 4, decals: true, halos: false, flashlight-spill: false, beam-cone: false}
+  high:   {max-lights: 16, max-distance: 48, interval-ticks: 2, decals: true, halos: true,  flashlight-spill: true,  beam-cone: false}
+  ultra:  {max-lights: 32, max-distance: 64, interval-ticks: 1, decals: true, halos: true,  flashlight-spill: true,  beam-cone: true}
+
+# ---------------------------------------------------------------------------------------------- emissive blocks
+# Blocks that get a coloured glow automatically. Vanilla's warm-yellow lights (torch, lantern, glowstone,
+# jack o'lantern, campfire, lava, fire, candles, end rod, beacon...) are deliberately NOT listed: vanilla already
+# lights them correctly. when: always | lit (Lightable blocks: only while lit) | charged (respawn anchor)
+blocks:
+  enabled: true
+  # chunks around each player that are scanned (off the main thread)
+  scan-radius-chunks: 5
+  scans-per-tick: 2
+  refresh-ticks: 10
+  # rescan chunks near players this often: /setblock, /fill and WorldEdit change blocks without events (0 = never)
+  rescan-seconds: 30
+  # billboard glow at the block itself (High/Ultra)
+  halos: true
+  profiles:
+    redstone_lamp:            {color: "#FF4A1F", radius: 6, intensity: 1.0, when: lit}
+    redstone_torch:           {color: "#FF2A12", radius: 4, intensity: 0.8, when: lit}
+    redstone_wall_torch:      {color: "#FF2A12", radius: 4, intensity: 0.8, when: lit}
+    redstone_ore:             {color: "#FF2A12", radius: 3, intensity: 0.7, when: lit}
+    deepslate_redstone_ore:   {color: "#FF2A12", radius: 3, intensity: 0.7, when: lit}
+    soul_torch:               {color: "#3FD7FF", radius: 6, intensity: 1.0}
+    soul_wall_torch:          {color: "#3FD7FF", radius: 6, intensity: 1.0}
+    soul_lantern:             {color: "#3FD7FF", radius: 7, intensity: 1.0}
+    soul_campfire:            {color: "#3FD7FF", radius: 7, intensity: 1.0, when: lit}
+    soul_fire:                {color: "#3FD7FF", radius: 6, intensity: 0.9, animation: flicker}
+    sea_lantern:              {color: "#5FFFE0", radius: 8, intensity: 1.0}
+    conduit:                  {color: "#3FE6D8", radius: 7, intensity: 1.0}
+    shroomlight:              {color: "#FF7A4A", radius: 7, intensity: 1.0}
+    ochre_froglight:          {color: "#FFC14D", radius: 8, intensity: 1.0}
+    verdant_froglight:        {color: "#4DFF7A", radius: 8, intensity: 1.0}
+    pearlescent_froglight:    {color: "#E07BFF", radius: 8, intensity: 1.0}
+    crying_obsidian:          {color: "#8A2BE2", radius: 4, intensity: 0.8}
+    respawn_anchor:           {color: "#9B30FF", radius: 7, intensity: 1.0, when: charged}
+    nether_portal:            {color: "#8A2BE2", radius: 5, intensity: 0.9, animation: pulse}
+    amethyst_cluster:         {color: "#B57BFF", radius: 4, intensity: 0.7}
+    large_amethyst_bud:       {color: "#B57BFF", radius: 3, intensity: 0.6}
+    sculk_sensor:             {color: "#1FD3D3", radius: 3, intensity: 0.6}
+    calibrated_sculk_sensor:  {color: "#1FD3D3", radius: 3, intensity: 0.6}
+    sculk_catalyst:           {color: "#1FD3D3", radius: 5, intensity: 0.8}
+    copper_bulb:              {color: "#E08A4F", radius: 7, intensity: 1.0, when: lit}
+    exposed_copper_bulb:      {color: "#C98E6B", radius: 6, intensity: 1.0, when: lit}
+    weathered_copper_bulb:    {color: "#5FBF9A", radius: 5, intensity: 1.0, when: lit}
+    oxidized_copper_bulb:     {color: "#3FE0B0", radius: 4, intensity: 1.0, when: lit}
+    waxed_copper_bulb:        {color: "#E08A4F", radius: 7, intensity: 1.0, when: lit}
+    waxed_exposed_copper_bulb: {color: "#C98E6B", radius: 6, intensity: 1.0, when: lit}
+    waxed_weathered_copper_bulb: {color: "#5FBF9A", radius: 5, intensity: 1.0, when: lit}
+    waxed_oxidized_copper_bulb: {color: "#3FE0B0", radius: 4, intensity: 1.0, when: lit}
+
+# ---------------------------------------------------------------------------------------------- held / worn
+# Light around players holding (either hand) or wearing (helmet) these. color "none" = brightness only (the
+# warm vanilla look). level = client-side LIGHT block level at the player's head.
+# Any item can be a light with the PDC string lighting:light = "#RRGGBB;radius;level" (or "none;radius;level").
+held:
+  enabled: true
+  items:
+    torch:                 {color: none, radius: 6, level: 14}
+    lantern:               {color: none, radius: 7, level: 15}
+    glowstone:             {color: none, radius: 7, level: 15}
+    jack_o_lantern:        {color: none, radius: 7, level: 15}
+    soul_torch:            {color: "#3FD7FF", radius: 5, level: 10}
+    soul_lantern:          {color: "#3FD7FF", radius: 5, level: 10}
+    redstone_torch:        {color: "#FF2A12", radius: 3, level: 7}
+    sea_lantern:           {color: "#5FFFE0", radius: 6, level: 14}
+    shroomlight:           {color: "#FF7A4A", radius: 6, level: 14}
+    ochre_froglight:       {color: "#FFC14D", radius: 6, level: 14}
+    verdant_froglight:     {color: "#4DFF7A", radius: 6, level: 14}
+    pearlescent_froglight: {color: "#E07BFF", radius: 6, level: 14}
+    glow_berries:          {color: "#FFB040", radius: 3, level: 8}
+
+# ---------------------------------------------------------------------------------------------- flashlights
+flashlights:
+  enabled: true
+  max-distance: 32
+  # full cone angle; the hotspot is the inner half of it
+  cone-degrees: 34
+  color: "#FFF4D6"
+  # client-side LIGHT blocks every N blocks along the beam, at this level (the hit spot gets 9..15 by distance)
+  beam-light-step: 5
+  beam-light-level: 9
+  # Q while holding a flashlight (or a gun with one) switches it on/off instead of dropping it
+  toggle-with-drop-key: true
+
+# Firearms (soft-depend; read-only). A gun has a flashlight attachment when its id is listed here ("*" = every
+# gun), or when the gun item carries the PDC key below (any value; byte/int 0 = detached).
+firearms:
+  enabled: true
+  flashlight-guns: []
+  flashlight-flag: "firearms:flashlight"
+
+# ---------------------------------------------------------------------------------------------- pack
 pack:
   # auto: same-port, else http | same-port: served on the Minecraft port (no extra port to open; not behind
   # Velocity/Bungee) | http: built-in web server on pack.http.port (players must reach that port) |
@@ -69,7 +181,10 @@ pack:
     # host name clients use to download; empty = the address each player connected with
     public-host: ""
   url: ""
-  required: false
-  prompt: "<gray>Lighting: coloured light shading and the Lighting Wand"
+  # true = the client must accept the pack or is disconnected. false (default): players who decline get fallback mode
+  strict-pack-required: false
+  prompt: "<gray>Lighting: coloured light, flashlights and the Lighting Wand"
+  # tell each player on join whether Resource Pack Lighting is active or they are in fallback mode
+  join-message: true
   # build the pack from this folder inside plugins/Lighting/ instead of the copy in the jar ("" = jar)
   source-folder: ""

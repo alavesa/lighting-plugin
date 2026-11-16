@@ -2,14 +2,15 @@ name: Lighting
 version: '${version}'
 main: fi.alavesa.lighting.LightingPlugin
 api-version: '26.2'
-description: Coloured, shader-lit light sources placed with the Lighting Wand
+description: Coloured lights (no shaders), flashlights and the Lighting Wand
+softdepend: [Firearms]
 author: Piia Alavesa
 website: https://github.com/alavesa/lighting-plugin
 
 commands:
   lighting:
     description: Lighting wand, light list and admin
-    usage: /lighting give|create|list|info|remove|tp|removeall|shader|pack|reload
+    usage: /lighting settings|diagnose|give|create|list|info|remove|tp|removeall|pack|reload
     aliases: [lights]
 
 permissions:
@@ -25,17 +26,19 @@ permissions:
       lighting.command.remove: true
       lighting.command.tp: true
       lighting.command.removeall: true
-      lighting.command.shader: true
+      lighting.command.settings: true
+      lighting.command.diagnose: true
       lighting.command.pack: true
       lighting.command.reload: true
   lighting.wand: {default: op, description: Use the Lighting Wand (place, edit, delete lights)}
-  lighting.command.give: {default: op, description: /lighting give}
+  lighting.command.give: {default: op, description: "/lighting give wand|flashlight|headlamp"}
   lighting.command.create: {default: op, description: "/lighting create: place a light by coordinates"}
   lighting.command.list: {default: op, description: /lighting list}
   lighting.command.info: {default: op, description: /lighting info}
   lighting.command.remove: {default: op, description: /lighting remove}
   lighting.command.tp: {default: op, description: /lighting tp}
   lighting.command.removeall: {default: op, description: /lighting removeall}
-  lighting.command.shader: {default: true, description: "/lighting shader: turn the coloured shading on or off for yourself"}
+  lighting.command.settings: {default: true, description: "/lighting settings: your own quality, colour vision, animations, flashlight"}
+  lighting.command.diagnose: {default: true, description: "/lighting diagnose: why lighting does or doesn't show for you"}
   lighting.command.pack: {default: op, description: /lighting pack}
   lighting.command.reload: {default: op, description: /lighting reload}

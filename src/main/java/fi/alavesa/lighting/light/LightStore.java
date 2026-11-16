@@ -1,6 +1,7 @@
 package fi.alavesa.lighting.light;
 
 import fi.alavesa.lighting.LightingConfig;
+import fi.alavesa.lighting.render.Anim;
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +32,9 @@ import org.bukkit.plugin.Plugin;
  *     radius: 6.0
  *     intensity: 1.0
  *     vanilla-block: true
+ *     animation: none       # none | pulse | flicker | strobe
+ *     spot: [0.0, -1.0, 0.0]  # spotlight direction; absent = point light
+ *     cone: 40.0            # spotlight cone, degrees
  *     owner: 8a7b...
  *     created: 1763100000000
  * </pre>
@@ -73,6 +77,11 @@ public final class LightStore {
                         LightingConfig.clamp(s.getDouble("intensity", 1.0), 0.05, 3.9),
                         s.getBoolean("vanilla-block", true), owner == null ? null : UUID.fromString(owner),
                         s.getLong("created"));
+                Anim anim = Anim.parse(s.getString("animation", "none"));
+                l.anim = anim == null ? Anim.NONE : anim;
+                java.util.List<Double> spot = s.getDoubleList("spot");
+                if (spot.size() == 3) l.spotDir = new org.bukkit.util.Vector(spot.get(0), spot.get(1), spot.get(2)).normalize();
+                l.coneDeg = s.getDouble("cone", 40);
                 registry.adoptBlock(l);
                 registry.add(l);
                 n++;
@@ -117,6 +126,11 @@ public final class LightStore {
             y.set(p + "radius", l.radius);
             y.set(p + "intensity", l.intensity);
             y.set(p + "vanilla-block", l.vanillaBlock);
+            y.set(p + "animation", l.anim.name().toLowerCase(java.util.Locale.ROOT));
+            if (l.spotDir != null) {
+                y.set(p + "spot", java.util.List.of(l.spotDir.getX(), l.spotDir.getY(), l.spotDir.getZ()));
+                y.set(p + "cone", l.coneDeg);
+            }
             if (l.owner != null) y.set(p + "owner", l.owner.toString());
             y.set(p + "created", l.created);
         }

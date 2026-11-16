@@ -1,106 +1,174 @@
 # Lighting
 
-Coloured, shader-lit light sources for vanilla Minecraft clients, placed and edited with the **Lighting Wand**.
-Paper 26.2+ plugin (one jar); the colour shading needs **Minecraft 26.3** and the Lighting resource pack.
+Coloured lights, flashlights and the **Lighting Wand** for vanilla Minecraft clients, **without shaders**.
+Paper 26.2+ plugin (one jar), resource pack formats 88–97 (26.2 and 26.3).
 
-![Red, green and blue lights on a 26.3 client](docs/rgb-lights.png)
+![Wand lights on a 26.3 client](docs/wand-lights.png)
 
-## How it works
+## Why 0.1/0.2 failed, and what 0.3 does instead
+
+0.1 and 0.2 drew colour with a **core shader** (`core/item.vsh`) plus a **per-player post effect**. That chain
+breaks in several independent ways on a real server:
+
+1. **The colour pass needs Minecraft 26.3.** `Player.postEffects()` doesn't exist on 26.2, so a 26.2 server or
+   client shows only white vanilla light.
+2. **The pack never arrived.** 0.1 served the pack on port 8165; a host that only opens the Minecraft port means
+   no client ever downloads it, and so no colour (0.2 moved the download onto the Minecraft port).
+3. **Shaders are fragile in the combined server pack.** Another pack that overrides `core/item`, a change to the
+   shader pipeline, or a client-side shader pack silently removes the effect. Clients reject the whole pack if a
+   shader fails to compile (seen before in Firearms 0.27).
+4. **Post effects are shared state.** CCTV and Firearms also set per-player post effects.
+
+0.3 removes all of that: **no `.vsh`/`.fsh`, no post effects.** Light is drawn with what the vanilla renderer
+already does well:
 
 ```
- server (plugin)                                client (resource pack)
- ───────────────                                ──────────────────────
- lights.yml ──► LightRegistry ──► per light:
-                   │   • LIGHT block (vanilla light, works for everyone)
-                   │   • marker: tiny item_display, item lighting:marker
-                   │       custom_model_data floats[0] = slot (0..63)      core/item.vsh sees the marker texel
-                   │       colors[0] = RGB, colors[1] = (r*8, i*64, 165) ─► moves the quad onto a few pixels of the
-                   │                                                       frame and writes position/colour/params
- PackService ──────┼──► pack (http / url / merged)                         (data block, bottom-left corner)
- LightEffect ──────┴──► Player.postEffects() += lighting:colored_lights ─► post pass reads the data block + depth,
-                                                                            rebuilds each pixel's position, adds
- WandListener + WandVfx ──► particles, sounds, dialogs                      the coloured light, hides the block
+ sources (each tick, shared)               RenderEngine (per player)                 client
+ ───────────────────────────               ─────────────────────────                 ──────
+ WandLights     lights.yml        ┐        cull: distance + view cone
+ BlockEmitters  scanned blocks    ├─► Emitter list ─► rank, cap at preset ─► Projector ─► Decals ─► ViewerState
+ HeldLights     hands / helmet    │        (8/16/32)            raycasts → surface        pool of ItemDisplays
+ Flashlights    look raycast      ┘                             patches, ellipses        only this player sees
+                (+ Firearms hook)                                                        + fake LIGHT blocks
 ```
 
-* **Markers** are non-persistent `item_display`s spawned when a chunk loads and removed when it unloads. Width and
-  height are 0, which turns off client frustum culling, so a light behind you still lights what you see. They are
-  scaled to 0.001, so without the pack they are invisible.
-* **The item shader** (`lighting_26_3/assets/minecraft/shaders/core/item.*`) checks the texel under each vertex. The
-  marker texture has key texels `R 217, G 41, B = kind*64 + slot`. For a marker it computes the view-space centre
-  (`ModelViewMat * Position`) and draws a screen-space quad over that light's pixels instead of the item. Every
-  other item renders exactly as vanilla.
-* **The data block** (see `shaders/include/lightdata.glsl`): row 0 holds the world projection matrix as 16 exact
-  floats plus a magic pixel. Rows 1..16 hold 4 lights per row, 5 px each: x, y, z as 24-bit fixed point (±512
-  blocks, 0.00006 block steps), the colour, then radius·8 / intensity·64 / magic.
-* **The post pass** (`shaders/post/colored_lights.fsh`) rebuilds view position from depth (`inverse(ProjMat)`,
-  respecting `RENDERPEARL_DEPTH_IS_ZERO_TO_ONE`) and normals from neighbour depths. It loops over the 64 slots.
-  Attenuation is a windowed inverse square `(1-x²)²/(1+6x²)` that reaches 0 exactly at the radius, multiplied by
-  wrapped N·L. Output: `scene · hueFilter · (1 + sum·Gain) + sum·Ambient`, with `sum ≤ MaxBoost`. The uniforms
-  (Gain 1.6, Ambient 0.10, Wrap 0.35, MaxBoost 2.5, Tint 0.7) are in `post_effect/colored_lights.json`. Cost when
-  no markers are on screen: one texel fetch per pixel.
+* **Colour** = soft decals: a flat item model with a white alpha-gradient texture, tinted per instance with the
+  `dyed_color` component (item model tint `minecraft:dye`), full-bright, in 8 opacity steps (custom model data).
+  The `Projector` raycasts from each light in the six axis directions and lays a decal flush on every surface it
+  hits (2 mm lift against z-fighting). Its size is the light's sphere cut by that surface (`2·√(r² − d²)`), and it
+  is clamped so it never hangs off an edge into open air.
+* **Brightness** = vanilla LIGHT blocks: real blocks for wand lights (config `lights.light-block: real`), or
+  client-side fake blocks (`sendMultiBlockChange`) for held items, flashlights and `packet` wand lights. Fake
+  blocks only go into air or water, and the real block is restored when the light moves.
+* **Per player**: every decal entity is `visibleByDefault = false` and shown only to its viewer. That makes quality
+  presets, colour-vision palettes and the on/off switch per player. Entities are pooled and diffed: a steady light
+  costs nothing per tick; a moving one costs one teleport (interpolated) and one transformation update.
 
-**Limits (by design):** 64 lights per world (the shader's slot count). No shadows: inside its radius, coloured light
-passes through walls (the vanilla LIGHT block's real light doesn't). The first-person hand item is drawn after post
-effects, so it isn't tinted. On 26.2 there are no per-player post effects, so lights there are vanilla light plus
-particles.
+## Flashlights
 
-## The wand
+Raycast along the look vector up to `flashlights.max-distance`. At the hit point a **hotspot** decal (bright core,
+faint lens ring) and a **spill** ring lie flush on the surface. Their radius is `d · tan(θ)` (hotspot θ = cone/4,
+spill θ = cone/2). Both are stretched by `1 / cos(α)` along the beam's direction on the surface (α = incidence,
+capped at 2.5×). The transform maps model X to the ellipse's major axis, Y to its minor axis and Z to the normal
+(`Projector.flat`). Fake LIGHT blocks: 9–15 at the hit, then every 5 blocks along the beam. **Ultra** adds a
+volumetric beam: four crossed planes with a longitudinal fade, rotated with `Quaternionf.rotationTo(+Z, dir)`.
+
+![Flashlight](docs/flashlight.png)
+
+Sources of a flashlight: `/lighting give flashlight` (hand-held), `/lighting give headlamp` (helmet), or a
+**Firearms** gun with a flashlight attachment. **Q** toggles it.
+
+**Firearms hook** (soft-depend, read-only; nothing in Firearms changes). A gun is an item with the PDC string
+`firearms:gun` = gun id. It has a flashlight when its id is in `firearms.flashlight-guns` (`"*"` = every gun), or
+when the item carries `firearms.flashlight-flag` (default `firearms:flashlight`; byte/int 0 = detached).
+
+## Emissive blocks
+
+Chunks within `blocks.scan-radius-chunks` of players are scanned off the main thread from a `ChunkSnapshot`, with
+empty sections skipped. Blocks of one profile inside a 4×4×4 cell merge into one light, so a nether portal is a
+few lights, not hundreds. Lit/charged state (redstone lamp, copper bulb, respawn anchor...) is read when rendering.
+Block place/break/piston/explosion/ignite events rescan the chunk. Chunks near players are also rescanned every
+`blocks.rescan-seconds`, because `/setblock`, `/fill` and WorldEdit fire no events.
+
+**Warm-yellow sources are deliberately not listed** (torch, lantern, glowstone, jack o'lantern, campfire, lava,
+fire, candles...): vanilla already lights them correctly. Default profiles: redstone (crimson), soul fire/torch/
+lantern/campfire (cyan), sea lantern and conduit (aqua), shroomlight (coral), froglights (amber/green/magenta),
+crying obsidian, respawn anchor and portal (purple), amethyst (violet), sculk (cyan), copper bulbs (bronze →
+turquoise by oxidation).
+
+![Emissive blocks](docs/emissive-blocks.png)
+
+## Held and worn lights
+
+Main hand, off hand or helmet: `held.items` (torch, lantern, glowstone... brightness only; soul torch, sea lantern,
+froglights... also coloured). Any item can be a light with the PDC string `lighting:light` =
+`"#RRGGBB;radius;level"` (or `"none;radius;level"`).
+
+## Quality presets and player settings
+
+| Preset | Lights | Distance | Update | Layers |
+|---|---|---|---|---|
+| **Low** (fallback) | 0 decals | 32 | 4 ticks | fake LIGHT blocks only (optionally a `●` text glyph per light) |
+| **Medium** | 8 | 32 | 4 ticks | surface glow; flashlight hotspot |
+| **High** (default) | 16 | 48 | 2 ticks | + halos, flashlight spill |
+| **Ultra** | 32 | 64 | 1 tick | + volumetric flashlight beam |
+
+Every value is in `config.yml` under `quality.*`. Lights outside the view cone (`render.frustum-degrees`) are
+skipped unless the player stands inside them. Decals below `render.min-alpha` aren't drawn.
+
+`/lighting settings` opens a dialog. The same settings work as commands: `/lighting settings quality ultra`,
+`... animations off`, `... palette deuteranopia`, `... enabled off`, `... flashlight off`. They are stored on the
+player. **Colour vision** modes (Protanopia, Deuteranopia, Tritanopia: daltonised from the Machado 2009
+simulation; High contrast: fully saturated hues) change light colours only for that player. Players **without the
+pack are in fallback mode automatically**: brightness only, never a purple-black square.
+
+## The Lighting Wand
 
 | Input | Does |
 |---|---|
-| Right-click | Place a light at the preview point (centre of the air block in front of the aimed face, or 6 blocks out). If you aim at a light: **edit** dialog |
-| Sneak + scroll | Resize: ±0.5 blocks per notch (1..24); the hotbar doesn't move |
-| Left-click | Next colour preset (config `lights.color.presets`) |
-| Sneak + right-click | Settings dialog: R/G/B sliders, hex, radius, intensity, vanilla light block |
+| Right-click | Place a light, or edit the light you aim at |
+| Sneak + scroll | Resize (preview sphere + resize ring) |
+| Left-click | Next colour preset |
+| Sneak + right-click | Settings: RGB/hex, radius, intensity, animation (none/pulse/flicker/strobe), spotlight + cone, light block |
 | Sneak + left-click | Delete the light you aim at |
 
-The edit dialog has **Save** (recolour/resize), **Move to my aim**, **Copy to wand** and **Delete**. Lights are aimed
-at with a ray (12 blocks, 0.6 block tolerance).
+Spotlights point where you look when you place them. The edit dialog can also re-aim them (**Aim spotlight**).
+Lights persist in `plugins/Lighting/lights.yml`.
 
-## VFX parameters
+## Commands
 
-| Effect | Who sees it | Exact parameters |
-|---|---|---|
-| Preview sphere | holder | Every 2 ticks: 3 great circles (normals Z, X, (1,1,0)) spinning about Y at 0.02 rad/tick, plus a latitude ring sweeping pole to pole (60-tick sine at 0.95·r). `DUST` in the light colour, size `min(1.1, 0.6 + 0.025·r)`, `clamp(2πr·3, 24, 96)` points per ring. Core: 2 `DUST` size 1.6 plus an `END_ROD` every 4 ticks |
-| Resize animation | holder | 10 ticks: an equator ring eases out-cubic from the old to the new radius (2× density, colour 50% toward white, size +0.4) with 6 `ELECTRIC_SPARK`s per frame. `AMETHYST_CLUSTER_HIT`, pitch 0.5→2.0 across min→max radius. Quick scrolls chain from the current ring |
-| Light dots | holder | `DUST` size 1.2 at every light within 32 blocks; the aimed light gets its full sphere with a white core |
-| Wand trail | everyone ≤ 32 | Each tick at the wand tip (eye + 0.55 forward + 0.38 right − 0.32 up): `DUST` size 0.55, offset 0.04; `WAX_ON` every 6 ticks |
-| Swing arc | everyone ≤ 32 | 14 `DUST_COLOR_TRANSITION` (colour → white, 0.9) on a diagonal from upper right to lower left, bowed 1.0–1.3 blocks out; `ELECTRIC_SPARK` every 4th; `TRIDENT_RETURN` 0.25 / 1.9 |
-| Placement burst | everyone ≤ 48 | 28 `TRAIL` rays (14 ticks) to a fibonacci sphere at max(1.2, 0.6·r); 24 `FIREWORK` speed 0.18; 12 `GLOW`; a 40-point `DUST` shell over 4 frames (every 2 ticks) out to 0.75·r, fading from white to the light colour and shrinking 1.6 → 0.8. `AMETHYST_BLOCK_CHIME` 1.0/1.3 + `BEACON_POWER_SELECT` 0.5/1.8 |
-| Edit applied | everyone ≤ 48 | 60-point `DUST` shell at the new radius, size 1.1; `AMETHYST_BLOCK_RESONATE` 0.8/1.5 |
-| Removal | everyone ≤ 48 | 24 `TRAIL`s collapsing from a 1.5-block shell (10 ticks), then 10 `SMOKE`; `BEACON_DEACTIVATE` 0.7/1.6 |
+`/lighting settings` · `diagnose [player]` · `give [wand|flashlight|headlamp] [player]` ·
+`create <world> <x> <y> <z> <#hex> <radius> [intensity] [animation]` · `list [radius|all]` · `info [id]` ·
+`remove [id]` · `tp <id>` · `removeall <world> confirm` · `pack [player]` · `reload`
 
-## Storage
+`settings` and `diagnose` (for yourself) are for everyone; the rest is op (`lighting.admin`).
 
-`plugins/Lighting/lights.yml`: one entry per light (world uid + name, x/y/z, `#RRGGBB`, radius, intensity,
-vanilla-block, owner, created). It's saved 2 s after a change (written off-thread to a temp file, then moved
-atomically), and again on shutdown.
+## Resource pack, priority and troubleshooting
 
-## Commands (`/lighting`, alias `/lights`)
+The pack (`resourcepack/`, generated by `tools/gen_pack.py`) contains only the `lighting` namespace and overrides
+nothing vanilla:
 
-`give [player]` · `create <world> <x> <y> <z> <#hex> <radius> [intensity]` · `list [radius|all]` · `info [id]` ·
-`remove [id]` · `tp <id>` · `removeall <world> confirm` · `shader [on|off]` (for yourself) · `pack [player]` · `reload`
+```
+pack.mcmeta                                  pack_format 97, min_format 88, max_format 97
+assets/lighting/items/{glow,hotspot,spill,halo,beam}.json   range_dispatch on custom_model_data[0] (opacity 0..7),
+                                                            tints: [{type: minecraft:dye}]
+assets/lighting/items/{canary,wand,flashlight}.json
+assets/lighting/models/item/light/<kind>_<0..7>.json        flat quad (beam: four crossed planes), light_emission 15
+assets/lighting/textures/item/light/<kind>_<0..7>.png       white RGB, radial alpha; glow is 256 px, the rest 128 px
+```
 
-Permissions: `lighting.wand`, `lighting.command.<sub>`, `lighting.admin` (all). Everything is op-only except
-`lighting.command.shader`.
+Textures **must** live under `textures/item/` (or `block/`): only those folders are stitched into the item atlas.
+Anywhere else renders as purple-black squares.
 
-## Pack
+**Priority:** the client applies packs top to bottom. A pack listed *above* Lighting that ships any
+`assets/lighting/...` file replaces ours. The server pack is offered as an extra pack (Paper multi-pack), so the
+player's own packs can still sit above it. Since Lighting owns its namespace, an override can only happen on
+purpose or by a copy of an old Lighting pack.
 
-Built from `resourcepack/` at startup and, since 0.2.0, served on the Minecraft port itself (`pack.delivery: auto` /
-`same-port`: nothing to open in a firewall; not behind Velocity/Bungee). `http` serves it on port 8165 instead (players
-must reach that port - with it closed nobody gets the pack and there is no coloured light), or `url` / `none` (merged).
-0.1.0 configs with the untouched default `http` on 8165 are switched to `auto` once. Several plugins can share the
-Minecraft port this way (SuperbVehicles 0.7+, CCTV 0.7+): each answers only its own download path.
-The colour pass is applied with Paper's `Player.postEffects()` (the API behind `/posteffect`); if a Paper build ever
-renames that API, the console runs `/posteffect add|remove <player> lighting:colored_lights` instead
-(`/lighting info` shows the backend).
-The base pack (formats 88..97) has the wand and marker models; all shaders live in the 26.3 overlay `lighting_26_3`.
-The pack overrides `minecraft:shaders/core/item.vsh/fsh`; changes are between `LIGHTING BEGIN/END` markers, so it
-can be merged with another pack's item shader by hand.
+**Delivery:** `pack.delivery: auto` (default) serves the pack on the Minecraft port itself, so there's nothing to
+open in a firewall (it doesn't work behind Velocity/Bungee). `http` serves it on port 8165, `url` points at a file
+you host, and `none` means it's merged into the server pack (then copy `lighting-pack.zip`'s `assets/lighting`
+into that pack). `pack.strict-pack-required: false` (default) never kicks anyone; `true` uses the client's
+"required pack" flow.
+
+**Every player is told on join** whether Resource Pack Lighting is active or they are in fallback mode, and how to
+enable server resource packs.
+
+**`/lighting diagnose`** shows the pack status the client reported, the mode, the player's settings, active
+decals and fake lights, lights in range per source, and the Firearms state. It then places a **canary** decal in
+front of the player for 10 s:
+
+![Canary](docs/diagnose-canary.png)
+
+| What the player sees | Meaning |
+|---|---|
+| Cyan ring with a check mark | Pack models and textures work |
+| Purple-black squares | Textures missing or overridden (or the pack is broken) |
+| A paper sheet, or nothing | `lighting:canary` is overridden, or the pack isn't loaded |
+
+The server can't see what the client renders, so the canary is the honest check.
 
 ## Build
 
-`./gradlew build` → `build/libs/lighting-<version>.jar`. `python3 tools/gen_pack.py` regenerates the marker models,
-textures and wand. `python3 tools/validate_shaders.py <glslang> <pack assets>,<vanilla assets> <files> [-D...]`
-compiles shaders the way the client does. The 26.3 client compiles to SPIR-V: use `gl_VertexIndex`, and remember
-that `filter` is a reserved word.
+`./gradlew build` → `build/libs/lighting-<version>.jar`. `python3 tools/gen_pack.py` regenerates every pack asset
+(textures, models, item definitions).

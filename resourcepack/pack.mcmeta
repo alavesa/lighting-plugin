@@ -1,17 +1,8 @@
 {
   "pack": {
-    "description": "Lighting: coloured lights and the lighting wand (colour shading needs Minecraft 26.3)",
-    "pack_format": 88,
+    "description": "Lighting: coloured light decals, flashlights and the Lighting Wand (no shaders)",
+    "pack_format": 97,
     "min_format": 88,
     "max_format": 97
-  },
-  "overlays": {
-    "entries": [
-      {
-        "min_format": 97,
-        "max_format": 97,
-        "directory": "lighting_26_3"
-      }
-    ]
   }
 }
