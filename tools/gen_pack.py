@@ -41,6 +41,11 @@ PROFILES = {
     'spill': lambda r: smooth(0.15, 0.55, r) * (1 - smooth(0.6, 1.0, r)) * 0.9 + 0.1 * (1 - smooth(0.0, 1.0, r)),
     # halo around the source itself (billboard): tight gaussian
     'halo': lambda r: math.exp(-(r / 0.38) ** 2) * (1 - smooth(0.85, 1.0, r)),
+    # outer halo layers and flashlight pearls (billboards, 0.5): a wide soft orb with no visible rim
+    'orb': lambda r: math.exp(-(r / 0.5) ** 2) * (1 - smooth(0.6, 1.0, r)),
+    # standing inside a coloured light: clear in the middle of the view, tinted towards the edges (r runs past 1
+    # in the corners, so they get the full tint)
+    'ambient': lambda r: smooth(0.3, 0.85, r),
 }
 
 # 4x4 ordered dither breaks up 8-bit alpha banding when a texel spans a lot of screen
@@ -63,18 +68,19 @@ def fringe(a, x, y):
 
 for name, prof in PROFILES.items():
     # the glow covers the biggest areas (whole walls): twice the resolution keeps its edge grain fine
-    size = SIZE * 2 if name == 'glow' else SIZE
+    # the ambient vignette spans the whole screen: 512 texels keep its fringe grain a few pixels wide
+    size = SIZE * 4 if name == 'ambient' else SIZE * 2 if name == 'glow' else SIZE
     for lv in range(LEVELS):
         k = (lv + 1) / LEVELS
         px = []
         for y in range(size):
             for x in range(size):
                 r = math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2) / (size / 2)
-                a = prof(min(r, 1.0)) * k * 255 + (BAYER[(y % 4) * 4 + x % 4] / 16.0 - 0.5)
+                a = prof(r if name == 'ambient' else min(r, 1.0)) * k * 255 + (BAYER[(y % 4) * 4 + x % 4] / 16.0 - 0.5)
                 a = max(0, min(255, int(round(a))))
                 # the broad glow/halo fade out through a dithered fringe; flashlight spots keep a crisp edge
                 # (they get stretched along the surface, which would blow the dither up into a checkerboard)
-                if name in ('glow', 'halo'):
+                if name in ('glow', 'halo', 'orb', 'ambient'):
                     a = fringe(a, x, y)
                 px.append((255, 255, 255, a))
         png(f'{ROOT}/textures/item/light/{name}_{lv}.png', size, size, px)

@@ -27,6 +27,10 @@ final class PacketDisplays {
             setViewRange, setItemStack, setItemTransform, setBrightness, setShadowRadius, getId, getEntityData,
             nonDefaultValues, packDirty, setPos, asNms, worldHandle, playerHandle, sendMethod;
     private static Field connectionField;
+    // moving a part (0.5): billboards turn around their anchor, so a moving billboard has to move its entity
+    private static Constructor<?> teleportCtor, pmrCtor, vec3Ctor;
+    private static Object posRotDuration;
+    private static Method dataSet;
     private static Object itemDisplayType, billboardFixed, billboardCenter, contextNone, fullBright, vec3Zero;
 
     static {
@@ -90,6 +94,17 @@ final class PacketDisplays {
             } catch (ReflectiveOperationException ignored) {
                 bundleCtor = null; // packets then go one by one
             }
+            try {
+                Class<?> pmr = Class.forName("net.minecraft.world.entity.PositionMoveRotation");
+                pmrCtor = pmr.getConstructor(vec3, vec3, float.class, float.class);
+                vec3Ctor = vec3.getConstructor(double.class, double.class, double.class);
+                teleportCtor = Class.forName("net.minecraft.network.protocol.game.ClientboundTeleportEntityPacket")
+                        .getConstructor(int.class, pmr, java.util.Set.class, boolean.class);
+                posRotDuration = display.getField("DATA_POS_ROT_INTERPOLATION_DURATION_ID").get(null);
+                dataSet = synched.getMethod("set", Class.forName("net.minecraft.network.syncher.EntityDataAccessor"), Object.class);
+            } catch (ReflectiveOperationException ignored) {
+                teleportCtor = null; // moving billboards are then re-spawned instead
+            }
             asNms = Class.forName("org.bukkit.craftbukkit.inventory.CraftItemStack").getMethod("asNMSCopy", ItemStack.class);
             connectionField = Class.forName("net.minecraft.server.level.ServerPlayer").getField("connection");
             ok = true;
@@ -119,7 +134,7 @@ final class PacketDisplays {
     static final class Part {
         final Object entity;
         final int id;
-        final double x, y, z;
+        double x, y, z;
 
         Part(Object entity, int id, double x, double y, double z) {
             this.entity = entity;
@@ -142,6 +157,23 @@ final class PacketDisplays {
         // width/height stay 0: the client never frustum-culls it (a decal is far bigger than an entity box)
         setPos.invoke(e, x, y, z);
         return new Part(e, (Integer) getId.invoke(e), x, y, z);
+    }
+
+    static boolean canMove() {
+        return teleportCtor != null;
+    }
+
+    /** Move the anchor (teleport packet); the client glides there over {@code interpTicks}. Pending metadata goes first,
+     *  so the glide duration is set before the move arrives. */
+    static void move(Part p, double x, double y, double z, int interpTicks, List<Object> out) throws ReflectiveOperationException {
+        dataSet.invoke(getEntityData.invoke(p.entity), posRotDuration, Math.max(0, interpTicks));
+        updatePackets(p, out);
+        out.add(teleportCtor.newInstance(p.id, pmrCtor.newInstance(vec3Ctor.newInstance(x, y, z), vec3Zero, 0f, 0f),
+                java.util.Set.of(), false));
+        setPos.invoke(p.entity, x, y, z);
+        p.x = x;
+        p.y = y;
+        p.z = z;
     }
 
     static void item(Part p, ItemStack stack) throws ReflectiveOperationException {

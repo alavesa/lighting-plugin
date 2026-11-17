@@ -63,6 +63,32 @@ already does well:
 
 ![Shadows](docs/shadows.png)
 
+## Camera-facing glow (0.5)
+
+Surface decals light the walls; three **camera-facing** (`Billboard.CENTER`) layers add the light in the air. The
+client turns them toward the camera every frame, and they are depth-tested like any model, so a wall in front
+still hides them. They do not light surfaces and cast no shadows; that stays the decals' job.
+
+- **Layered halos** (`quality.*.halo-layers`, Medium 2 / High 3 / Ultra 5): a tight core plus wider, fainter
+  layers up to `render.halo-spread` × the core (never past 0.9 × the light's radius), pulled `render.halo-pull`
+  blocks from the light toward each viewer so the lamp block does not cut them.
+- **Beam pearls** (`quality.*.beam-nodes`, 3 / 5 / 8): soft orbs along a flashlight beam, `d · tan(θ)` across at
+  distance `d`, so from the side the row reads as a cone. Your own beam's pearls are faint (`render.own-beam`) and
+  start 2 blocks out: looking down your own beam they would all stack on the crosshair. The crossed-plane cone of
+  0.4 (`beam-cone`) is off by default since it reads as an X from behind your own beam, and it is never drawn for
+  your own beam.
+- **Ambient tint** (`quality.*.ambient`, Ultra): standing inside a coloured light, a vignette of its colour sits
+  `render.ambient-distance` in front of the camera: clear in the middle, tinted at the edges, up to
+  `render.ambient-alpha`. It is anchored at the eye and pushed ahead in camera space, so turning never leaves it
+  behind; the anchor is led by the last step and the ping so walking does not either.
+
+Billboards turn around their entity's position, so moving ones (pearls, the ambient tint, halos as you walk) move
+their entity with a teleport packet and glide over the pass interval instead of being re-spawned.
+
+| Layered halos | Beam pearls from the side | Ambient tint inside a red light |
+|---|---|---|
+| ![Halos](docs/halos.png) | ![Pearls](docs/flashlight-pearls.png) | ![Ambient](docs/ambient.png) |
+
 ## Flashlights
 
 `FlashlightEngine` raycasts along the look vector up to `flashlights.max-distance` (25). At the hit point a **hotspot** decal (bright core,
@@ -70,8 +96,8 @@ faint lens ring) and a **spill** ring lie flush on the surface. Their radius is 
 spill θ = cone/2). Both are stretched by `1 / cos(α)` along the beam's direction on the surface (α = incidence,
 capped at 2.5×). The transform maps model X to the ellipse's major axis, Y to its minor axis and Z to the normal
 (`SurfaceDecalProjector.flat`). Spots are clamped to the surface they land on, so a beam hitting a pillar shows on the
-pillar instead of hanging in the air. Blocks inside the cone shadow the hit surface. Fake LIGHT blocks: 9–15 at the hit, then every 5 blocks along the beam. **Ultra** adds a
-volumetric beam: four crossed planes with a longitudinal fade, rotated with `Quaternionf.rotationTo(+Z, dir)`.
+pillar instead of hanging in the air. Blocks inside the cone shadow the hit surface. Fake LIGHT blocks: 9–15 at the hit, then every 5 blocks along the beam. The beam in
+the air is a row of camera-facing pearls (see above); the 0.4 crossed-plane cone is still there as `beam-cone`.
 
 ![Flashlight](docs/flashlight.png)
 
@@ -109,9 +135,9 @@ froglights... also coloured). Any item can be a light with the PDC string `light
 | Preset | Lights | Distance | Update | Layers |
 |---|---|---|---|---|
 | **Low** (fallback) | 0 decals | 32 | 4 ticks | fake LIGHT blocks only (optionally a `●` text glyph per light) |
-| **Medium** | 8 | 32 | 4 ticks | surface glow; flashlight hotspot |
-| **High** (default) | 16 | 48 | 2 ticks | + halos, flashlight spill |
-| **Ultra** | 32 | 64 | 1 tick | + volumetric flashlight beam |
+| **Medium** | 8 | 32 | 4 ticks | surface glow; 2-layer halos; flashlight hotspot + 3 beam pearls |
+| **High** (default) | 16 | 48 | 2 ticks | + 3-layer halos, flashlight spill, 5 pearls |
+| **Ultra** | 32 | 64 | 1 tick | + 5-layer halos, 8 pearls, ambient tint inside coloured lights |
 
 Every value is in `config.yml` under `quality.*`. Lights outside the view cone (`render.frustum-degrees`) are
 skipped unless the player stands inside them. Decals below `render.min-alpha` aren't drawn.
@@ -150,11 +176,11 @@ nothing vanilla:
 
 ```
 pack.mcmeta                                  pack_format 97, min_format 88, max_format 97
-assets/lighting/items/{glow,hotspot,spill,halo,beam}.json   range_dispatch on custom_model_data[0] (opacity 0..7),
+assets/lighting/items/{glow,hotspot,spill,halo,orb,ambient,beam}.json   range_dispatch on custom_model_data[0] (opacity 0..7),
                                                             tints: [{type: minecraft:dye}]
 assets/lighting/items/{canary,wand,flashlight}.json
 assets/lighting/models/item/light/<kind>_<0..7>.json        flat quad (beam: four crossed planes), light_emission 15
-assets/lighting/textures/item/light/<kind>_<0..7>.png       white RGB, radial alpha; glow is 256 px, the rest 128 px
+assets/lighting/textures/item/light/<kind>_<0..7>.png       white RGB, radial alpha; ambient 512 px, glow 256, the rest 128
 ```
 
 Textures **must** live under `textures/item/` (or `block/`): only those folders are stitched into the item atlas.

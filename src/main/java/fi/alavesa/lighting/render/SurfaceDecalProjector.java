@@ -327,6 +327,17 @@ public final class SurfaceDecalProjector {
      * optional volumetric beam cone.
      */
     public void spot(Emitter e, double alpha, boolean spill, boolean beam, int interp, double beamMax, List<Decal> out) {
+        spot(e, alpha, spill, beam, interp, beamMax, 0, 1, 0, out);
+    }
+
+    /**
+     * As above, plus {@code nodes} camera-facing pearls along the beam (0.5): pearl i sits at d_i and is d_i * tan(theta)
+     * across, so from the side the row reads as a cone of light in the air. {@code pearlAlpha} scales them (the
+     * viewer's own beam: looking down it, every pearl covers the same patch of screen and they stack up), and
+     * pearls nearer the lamp than {@code skipNear} are left out.
+     */
+    public void spot(Emitter e, double alpha, boolean spill, boolean beam, int interp, double beamMax, int nodes,
+                     double pearlAlpha, double skipNear, List<Decal> out) {
         Emitter.Spot s = e.spot();
         if (s == null) return;
         double half = Math.toRadians(s.coneDeg() / 2);
@@ -360,6 +371,18 @@ public final class SurfaceDecalProjector {
                         alpha * 0.8 * Math.pow(far, 0.8), false, interp));
             }
         }
+        if (nodes > 0 && pearlAlpha > 0) {
+            double len = Math.min(beamMax, s.hit() != null ? s.distance() : s.range());
+            for (int i = 0; i < nodes; i++) {
+                double di = len * (i + 0.5) / nodes;
+                if (di < skipNear) continue;
+                double dia = Math.max(0.2, 2 * di * Math.tan(half));
+                Vector at = s.origin().clone().add(s.dir().clone().multiply(di));
+                double a = alpha * 0.45 * pearlAlpha * (1 - 0.7 * di / Math.max(1, len));
+                out.add(new Decal(e.key() + "#pearl" + i, Decal.Kind.ORB, at.getX(), at.getY(), at.getZ(),
+                        new Matrix4f().scale((float) dia, (float) dia, 1), a, true, interp));
+            }
+        }
         if (beam) {
             double len = Math.min(beamMax, s.hit() != null ? s.distance() : s.range());
             if (len > 0.5) {
@@ -379,6 +402,28 @@ public final class SurfaceDecalProjector {
         float size = (float) Math.max(0.6, Math.min(2.5, 0.5 + e.radius() * 0.12));
         out.add(new Decal(e.key() + "#halo", Decal.Kind.HALO, e.x(), e.y(), e.z(),
                 new Matrix4f().scale(size, size, 1), alpha * 0.6, true, 0));
+    }
+
+    /**
+     * Concentric camera-facing glow (0.5): a tight core plus wider, fainter layers up to {@code spread} x the core
+     * (never past 0.9 x the light's radius), all pulled {@code pull} blocks from the light toward the viewer's eye so
+     * the lamp block itself does not cut them. Walls in front still hide them (they are depth-tested like any model).
+     */
+    public void halo(Emitter e, double alpha, int layers, double ex, double ey, double ez, double pull, double spread,
+                     int interp, List<Decal> out) {
+        if (layers <= 0) return;
+        double core = Math.max(0.6, Math.min(2.5, 0.5 + e.radius() * 0.12));
+        double dx = ex - e.x(), dy = ey - e.y(), dz = ez - e.z();
+        double d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        double k = d > 1e-3 ? Math.min(pull, d * 0.5) / d : 0;
+        double x = e.x() + dx * k, y = e.y() + dy * k, z = e.z() + dz * k;
+        double outer = Math.max(core, Math.min(core * spread, e.radius() * 0.9));
+        for (int i = 0; i < layers; i++) {
+            double t = layers == 1 ? 0 : (double) i / (layers - 1);
+            float size = (float) (core * Math.pow(outer / core, t));
+            out.add(new Decal(e.key() + (i == 0 ? "#halo" : "#halo" + i), i == 0 ? Decal.Kind.HALO : Decal.Kind.ORB,
+                    x, y, z, new Matrix4f().scale(size, size, 1), alpha * 0.6 * Math.pow(0.55, i), true, interp));
+        }
     }
 
     /**

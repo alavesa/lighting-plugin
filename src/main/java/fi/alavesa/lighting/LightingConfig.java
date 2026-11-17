@@ -66,6 +66,14 @@ public final class LightingConfig {
     public final double collectRange;
     public final int projectionCacheTicks;
     public final double beamLength;
+    /** halo layers sit this far from the light toward the viewer (so a lamp block does not hide them) */
+    public final double haloPull;
+    /** outermost halo layer = core size x this (capped by the light's radius) */
+    public final double haloSpread;
+    /** a player's OWN flashlight pearls are this opaque (looking down your own beam stacks them all) */
+    public final double ownBeam;
+    public final double ambientAlpha;
+    public final double ambientDistance;
     public final double fakeLightDistance;
     public final int maxFakeLights;
     public final int fakeResendTicks;
@@ -144,10 +152,15 @@ public final class LightingConfig {
 
         Quality dq = Quality.parse(c.getString("render.default-quality", "high"));
         defaultQuality = dq == null ? Quality.HIGH : dq;
-        profiles.put(Quality.LOW, profile(c, "low", 0, 32, 4, false, false, false, false, 4));
-        profiles.put(Quality.MEDIUM, profile(c, "medium", 8, 32, 4, true, false, false, false, 4));
-        profiles.put(Quality.HIGH, profile(c, "high", 16, 48, 2, true, true, true, false, 2));
-        profiles.put(Quality.ULTRA, profile(c, "ultra", 32, 64, 1, true, true, true, true, 1));
+        profiles.put(Quality.LOW, profile(c, "low", 0, 32, 4, false, false, false, false, 4, 0, 0, false));
+        profiles.put(Quality.MEDIUM, profile(c, "medium", 8, 32, 4, true, true, false, false, 4, 2, 3, false));
+        profiles.put(Quality.HIGH, profile(c, "high", 16, 48, 2, true, true, true, false, 2, 3, 5, false));
+        profiles.put(Quality.ULTRA, profile(c, "ultra", 32, 64, 1, true, true, true, false, 1, 5, 8, true));
+        haloPull = c.getDouble("render.halo-pull", 0.6);
+        haloSpread = Math.max(1, c.getDouble("render.halo-spread", 4.5));
+        ownBeam = clamp(c.getDouble("render.own-beam", 0.3), 0, 1);
+        ambientAlpha = clamp(c.getDouble("render.ambient-alpha", 0.3), 0, 1);
+        ambientDistance = clamp(c.getDouble("render.ambient-distance", 1.4), 0.4, 4);
         opacity = clamp(c.getDouble("render.opacity", 0.5), 0.05, 1.0);
         minAlpha = clamp(c.getDouble("render.min-alpha", 0.05), 0.0, 0.5);
         poolSize = Math.max(0, c.getInt("render.pool-size", 24));
@@ -239,13 +252,16 @@ public final class LightingConfig {
     }
 
     private static Quality.Profile profile(FileConfiguration c, String name, int lights, double dist, int interval,
-                                           boolean decals, boolean halos, boolean spill, boolean beams, int interp) {
+                                           boolean decals, boolean halos, boolean spill, boolean beams, int interp,
+                                           int layers, int nodes, boolean ambient) {
         String p = "quality." + name + ".";
         return new Quality.Profile(Math.max(0, c.getInt(p + "max-lights", lights)),
                 c.getDouble(p + "max-distance", dist), Math.max(1, c.getInt(p + "interval-ticks", interval)),
                 c.getBoolean(p + "decals", decals), c.getBoolean(p + "halos", halos),
                 c.getBoolean(p + "flashlight-spill", spill), c.getBoolean(p + "beam-cone", beams),
-                Math.max(0, c.getInt(p + "flashlight-interpolation-ticks", interp)));
+                Math.max(0, c.getInt(p + "flashlight-interpolation-ticks", interp)),
+                Math.max(0, Math.min(5, c.getInt(p + "halo-layers", layers))),
+                Math.max(0, Math.min(12, c.getInt(p + "beam-nodes", nodes))), c.getBoolean(p + "ambient", ambient));
     }
 
     public Quality.Profile profile(Quality q) {

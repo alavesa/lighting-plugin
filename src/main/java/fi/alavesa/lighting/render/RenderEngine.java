@@ -15,6 +15,7 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
+import org.joml.Matrix4f;
 
 /**
  * The per-tick loop. Once per tick: every source lists its lights near players (shared work). Then for each viewer
@@ -61,6 +62,7 @@ public final class RenderEngine {
     }
 
     public void quit(Player p) {
+        lastEye.remove(p.getUniqueId());
         DisplayEntityPoolManager v = viewers.remove(p.getUniqueId());
         if (v != null) v.clear(false);
     }
@@ -170,11 +172,17 @@ public final class RenderEngine {
             int start = decals.size();
             if (e.spot() != null) {
                 // moving lights interpolate over one pass, so they glide instead of stepping
-                projector.spot(e, a, prof.spill(), prof.beams(), Math.max(prof.interval(), prof.flashInterp()),
-                        cfg.beamLength, decals);
+                // your own beam starts at your eye: its pearls would all stack on the crosshair, so they are fainter
+                // and start a little way out
+                Vector o = e.spot().origin();
+                boolean own = o.distanceSquared(eye.toVector()) < 1.0;
+                // the old crossed-plane cone reads as an X from behind your own beam: only for other players' beams
+                projector.spot(e, a, prof.spill(), prof.beams() && !own, Math.max(prof.interval(), prof.flashInterp()),
+                        cfg.beamLength, prof.beamNodes(), own ? cfg.ownBeam : 1, own ? 2.0 : 0, decals);
             } else {
                 projector.point(e, tick, a, decals);
-                if (prof.halos() && e.halo()) projector.halo(e, a, decals);
+                if (prof.halos() && e.halo()) projector.halo(e, a, Math.max(1, prof.haloLayers()), ex, ey, ez,
+                        cfg.haloPull, cfg.haloSpread, prof.interval(), decals);
             }
             int rgb = s.palette.remap(e.rgb());
             for (int i = start; i < decals.size(); i++) {
@@ -182,7 +190,46 @@ public final class RenderEngine {
                 colours.put(d.id(), d.kind() == Decal.Kind.SHADOW ? 0x000000 : rgb);
             }
         }
+        if (prof.ambient()) ambient(v, all, eye, look, s, decals, colours);
         v.apply(decals, colours, cfg.minAlpha, cfg.poolSize);
+    }
+
+    private final Map<UUID, Vector> lastEye = new HashMap<>();
+
+    /**
+     * Standing inside a coloured light: a faint vignette of its colour right in front of the camera, so the edges of
+     * the view stay tinted when the lamp is behind you. It is a camera-facing display anchored at the eye and pushed
+     * ahead in camera space, so turning never leaves it behind; the anchor follows the player's movement (led by
+     * the last step and the ping, so it stays ahead of the camera when walking).
+     */
+    private void ambient(DisplayEntityPoolManager v, List<Emitter> all, Location eye, Vector look, PlayerSettings s,
+                         List<Decal> decals, Map<String, Integer> colours) {
+        Player p = v.player();
+        double ex = eye.getX(), ey = eye.getY(), ez = eye.getZ();
+        Emitter best = null;
+        double bestW = 0;
+        for (Emitter e : all) {
+            if (!e.colored() || e.spot() != null || e.radius() <= 0) continue;
+            double d = Math.sqrt(e.distanceSq(ex, ey, ez));
+            if (d >= e.radius()) continue;
+            double w = (1 - d / e.radius()) * Math.min(1.6, e.intensity());
+            if (w > bestW) { bestW = w; best = e; }
+        }
+        Vector prev = lastEye.put(p.getUniqueId(), eye.toVector());
+        if (best == null) return;
+        double lead = 1 + Math.min(6, p.getPing() / 50.0);
+        Vector at = eye.toVector();
+        if (prev != null && prev.distanceSquared(at) < 4) at.add(at.clone().subtract(prev).multiply(lead));
+        double dist = cfg.ambientDistance;
+        // the quad's own edges stay off-screen at normal FOV (left/right screen edges at r ~ 0.8, where the tint is
+        // nearly full; top/bottom about halfway): clear in the middle, tinted at the sides (26.3 client, FOV 70, 16:9)
+        float size = (float) (dist * 2.9);
+        Matrix4f m = new Matrix4f().translate(0, 0, (float) -dist).scale(size, size, 1);
+        Decal d = new Decal("ambient", Decal.Kind.AMBIENT, at.getX(), at.getY(), at.getZ(), m,
+                cfg.ambientAlpha * Math.min(1, bestW) * (s.animations ? best.anim().factor(tick, best.seed()) : 1), true,
+                Math.max(1, cfg.profile(s.quality).interval()));
+        decals.add(d);
+        colours.put(d.id(), s.palette.remap(best.rgb()));
     }
 
     /** Coloured lights the viewer could see: within range, roughly inside the view cone, best first, capped. */

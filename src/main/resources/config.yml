@@ -63,8 +63,20 @@ render:
   frustum-degrees: 130
   # point-light projections (6 raycasts) are cached this long; block changes nearby clear them early
   projection-cache-ticks: 100
-  # max length of the volumetric flashlight beam (Ultra)
+  # max length of the volumetric flashlight beam (beam-cone / beam-nodes)
   beam-length: 16
+  # Camera-facing glow (0.5). Each light's halo is quality.*.halo-layers concentric layers: a tight core, then wider,
+  # fainter ones up to halo-spread x the core (never past 0.9 x the light's radius). They sit halo-pull blocks from the
+  # light toward the viewer so the lamp block does not hide them; walls in front still do.
+  halo-pull: 0.6
+  halo-spread: 4.5
+  # flashlight "pearls" (quality.*.beam-nodes): your OWN beam's pearls are this opaque - looking down your own beam
+  # they all cover the same patch of screen around the crosshair
+  own-beam: 0.3
+  # standing inside a coloured light (quality.*.ambient): a vignette of its colour this far in front of the camera,
+  # at most this opaque at the light's centre (clear in the middle of the view, tinted at the edges)
+  ambient-alpha: 0.3
+  ambient-distance: 1.4
   # client-side LIGHT blocks (held items, flashlights, packet wand lights): how far, how many per player
   fake-light-distance: 48
   max-fake-lights: 48
@@ -74,11 +86,13 @@ render:
   fallback-glyphs: false
 
 # Quality presets. LOW = fallback: no decals (brightness only). Override any value per preset.
+# halo-layers: camera-facing glow layers per light (1 = single halo); beam-nodes: pearls along flashlight beams;
+# ambient: the coloured vignette while standing inside a light.
 quality:
   low:    {max-lights: 0,  max-distance: 32, interval-ticks: 4, decals: false}
-  medium: {max-lights: 8,  max-distance: 32, interval-ticks: 4, decals: true, halos: false, flashlight-spill: false, beam-cone: false}
-  high:   {max-lights: 16, max-distance: 48, interval-ticks: 2, decals: true, halos: true,  flashlight-spill: true,  beam-cone: false}
-  ultra:  {max-lights: 32, max-distance: 64, interval-ticks: 1, decals: true, halos: true,  flashlight-spill: true,  beam-cone: true}
+  medium: {max-lights: 8,  max-distance: 32, interval-ticks: 4, decals: true, halos: true,  halo-layers: 2, flashlight-spill: false, beam-cone: false, beam-nodes: 3, ambient: false}
+  high:   {max-lights: 16, max-distance: 48, interval-ticks: 2, decals: true, halos: true,  halo-layers: 3, flashlight-spill: true,  beam-cone: false, beam-nodes: 5, ambient: false}
+  ultra:  {max-lights: 32, max-distance: 64, interval-ticks: 1, decals: true, halos: true,  halo-layers: 5, flashlight-spill: true,  beam-cone: false, beam-nodes: 8, ambient: true}
 
 # ---------------------------------------------------------------------------------------------- shadows
 # Blocks between a light and a surface cast shadows: every block cell of a lit surface checks its line of sight

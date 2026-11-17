@@ -127,6 +127,7 @@ public final class DisplayEntityPoolManager {
             String look = d.kind().model + ":" + level + ":" + rgb;
             keep.add(d.id());
             PacketDisplays.Part p = parts.get(d.id());
+            boolean had = p != null;
             if (p != null && !fits(p, d, eye)) {
                 removed.add(p.id);
                 parts.remove(d.id());
@@ -142,6 +143,13 @@ public final class DisplayEntityPoolManager {
                 }
                 parts.put(d.id(), p);
                 shown.remove(d.id());
+                matrices.remove(d.id());
+                had = false;
+            }
+            if (d.billboard() && !fresh && (p.x != d.x() || p.y != d.y() || p.z != d.z())) {
+                // a billboard is drawn at its anchor: moving lights (beam pearls, the ambient glow) move the entity,
+                // gliding when it was already showing this decal, jumping when it was just taken from the pool
+                PacketDisplays.move(p, d.x(), d.y(), d.z(), had ? d.interp() : 0, out);
                 matrices.remove(d.id());
             }
             if (!look.equals(shown.get(d.id()))) {
@@ -190,7 +198,7 @@ public final class DisplayEntityPoolManager {
     /** Can this entity show the decal without being re-spawned? */
     private boolean fits(PacketDisplays.Part p, Decal d, Location eye) {
         double dx = d.x() - p.x, dy = d.y() - p.y, dz = d.z() - p.z;
-        if (d.billboard()) return dx * dx + dy * dy + dz * dz < 1e-6;
+        if (d.billboard() && !PacketDisplays.canMove()) return dx * dx + dy * dy + dz * dz < 1e-6;
         double ex = p.x - eye.getX(), ey = p.y - eye.getY(), ez = p.z - eye.getZ();
         return dx * dx + dy * dy + dz * dz < MAX_OFFSET * MAX_OFFSET && ex * ex + ey * ey + ez * ez < 48 * 48;
     }
@@ -420,7 +428,7 @@ public final class DisplayEntityPoolManager {
     public List<String> describe() {
         List<String> out = new ArrayList<>();
         out.add(decalCount() + " decals, " + (free.size() + freeParts.size()) + " pooled ("
-                + (PacketDisplays.available() && !packetsBroken ? "packet entities" + (PacketDisplays.bundles() ? ", bundled" : "")
+                + (PacketDisplays.available() && !packetsBroken ? "packet entities" + (PacketDisplays.bundles() ? ", bundled" : "") + (PacketDisplays.canMove() ? ", moving billboards" : ", billboards re-spawn when moved")
                 : "world entities" + (PacketDisplays.available() ? "" : ": " + PacketDisplays.problem())) + "), "
                 + glyphs.size() + " fallback glyphs, " + fakes.size() + " fake light blocks");
         return out;
